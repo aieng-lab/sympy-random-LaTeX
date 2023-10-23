@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+from copy import deepcopy
 from functools import reduce
 
 from sympy.core import S, sympify, Dummy, Mod
@@ -7,7 +9,7 @@ from sympy.core.function import Function, ArgumentIndexError, PoleError
 from sympy.core.logic import fuzzy_and
 from sympy.core.numbers import Integer, pi, I
 from sympy.core.relational import Eq
-from sympy.external.gmpy import gmpy as _gmpy
+from sympy.external.gmpy import HAS_GMPY, gmpy
 from sympy.ntheory import sieve
 from sympy.ntheory.residue_ntheory import binomial_mod
 from sympy.polys.polytools import Poly
@@ -159,16 +161,8 @@ class factorial(CombinatorialFunction):
                         result = cls._small_factorials[n-1]
 
                     # GMPY factorial is faster, use it when available
-                    #
-                    # XXX: There is a sympy.external.gmpy.factorial function
-                    # which provides gmpy.fac if available or the flint version
-                    # if flint is used. It could be used here to avoid the
-                    # conditional logic but it needs to be checked whether the
-                    # pure Python fallback used there is as fast as the
-                    # fallback used here (perhaps the fallback here should be
-                    # moved to sympy.external.ntheory).
-                    elif _gmpy is not None:
-                        result = _gmpy.fac(n)
+                    elif HAS_GMPY:
+                        result = gmpy.fac(n)
 
                     else:
                         bits = bin(n).count('1')
@@ -277,6 +271,11 @@ class factorial(CombinatorialFunction):
         elif not arg0.is_infinite:
             return self.func(arg)
         raise PoleError("Cannot expand %s around 0" % (self))
+
+    def __deepcopy__(self, memodict={}):
+        args = [deepcopy(a) for a in self.args]
+        new_instance = factorial(*args, evaluate=False)
+        return new_instance
 
 class MultiFactorial(CombinatorialFunction):
     pass
@@ -947,11 +946,8 @@ class binomial(CombinatorialFunction):
                 elif k > n // 2:
                     k = n - k
 
-                # XXX: This conditional logic should be moved to
-                # sympy.external.gmpy and the pure Python version of bincoef
-                # should be moved to sympy.external.ntheory.
-                if _gmpy is not None:
-                    return Integer(_gmpy.bincoef(n, k))
+                if HAS_GMPY:
+                    return Integer(gmpy.bincoef(n, k))
 
                 d, result = n - k, 1
                 for i in range(1, k + 1):

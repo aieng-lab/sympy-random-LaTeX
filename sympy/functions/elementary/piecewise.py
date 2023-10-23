@@ -1,3 +1,4 @@
+import sympy
 from sympy.core import S, Function, diff, Tuple, Dummy, Mul
 from sympy.core.basic import Basic, as_Basic
 from sympy.core.numbers import Rational, NumberSymbol, _illegal
@@ -20,7 +21,7 @@ class ExprCondPair(Tuple):
 
     def __new__(cls, expr, cond):
         expr = as_Basic(expr)
-        if cond == True:
+        if cond == True or isinstance(cond, sympy.Otherwise):
             return Tuple.__new__(cls, expr, true)
         elif cond == False:
             return Tuple.__new__(cls, expr, false)
@@ -60,6 +61,9 @@ class ExprCondPair(Tuple):
     def _eval_simplify(self, **kwargs):
         return self.func(*[a.simplify(**kwargs) for a in self.args])
 
+
+class Otherwise(Basic):
+    pass
 
 class Piecewise(Function):
     """
@@ -1172,35 +1176,25 @@ def piecewise_simplify_arguments(expr, **kwargs):
                 cset = iv - covered
                 if not cset:
                     continue
-                try:
-                    a = cset.inf
-                except NotImplementedError:
-                    pass # continue with the given `a`
-                else:
-                    incl_a = include(c, x, a)
                 if incl_a and incl_b:
                     if a.is_infinite and b.is_infinite:
                         c = S.true
                     elif b.is_infinite:
-                        c = (x > a) if a in covered else (x >= a)
-                    elif a.is_infinite:
+                        c = (x >= a)
+                    elif a in covered or a.is_infinite:
                         c = (x <= b)
-                    elif a in covered:
-                        c = And(a < x, x <= b)
                     else:
                         c = And(a <= x, x <= b)
                 elif incl_a:
-                    if a.is_infinite:
+                    if a in covered or a.is_infinite:
                         c = (x < b)
-                    elif a in covered:
-                        c = And(a < x, x < b)
                     else:
                         c = And(a <= x, x < b)
                 elif incl_b:
                     if b.is_infinite:
                         c = (x > a)
                     else:
-                        c = And(a < x, x <= b)
+                        c = (x <= b)
                 else:
                     if a in covered:
                         c = (x < b)

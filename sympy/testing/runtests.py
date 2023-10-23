@@ -37,7 +37,7 @@ from inspect import unwrap
 
 from sympy.core.cache import clear_cache
 from sympy.external import import_module
-from sympy.external.gmpy import GROUND_TYPES
+from sympy.external.gmpy import GROUND_TYPES, HAS_GMPY
 
 IS_WINDOWS = (os.name == 'nt')
 ON_CI = os.getenv('CI', None)
@@ -390,7 +390,7 @@ def test(*paths, subprocess=True, rerun=0, **kwargs):
 
     Run all tests in sympy/core and sympy/utilities:
 
-    >>> sympy.test("/core", "/util")    # doctest: +SKIP
+    >>> sympy.test("/core", "/tools")    # doctest: +SKIP
 
     Run specific test from a file:
 
@@ -1443,7 +1443,7 @@ class SymPyDocTests:
             assert len(test.examples) != 0
 
             if self._reporter._verbose:
-                self._reporter.write("\n{} ".format(test.name))
+                self._reporter.load_and_write("\n{} ".format(test.name))
 
             # check if there are external dependencies which need to be met
             if '_doctest_depends_on' in test.globs:
@@ -1529,8 +1529,7 @@ class SymPyDocTests:
                             executables=(),
                             modules=(),
                             disable_viewers=(),
-                            python_version=(3, 5),
-                            ground_types=None):
+                            python_version=(3, 5)):
         """
         Checks if the dependencies for the test are installed.
 
@@ -1574,10 +1573,6 @@ class SymPyDocTests:
         if python_version:
             if sys.version_info < python_version:
                 raise DependencyError("Requires Python >= " + '.'.join(map(str, python_version)))
-
-        if ground_types is not None:
-            if GROUND_TYPES not in ground_types:
-                raise DependencyError("Requires ground_types in " + str(ground_types))
 
         if 'pyglet' in modules:
             # monkey-patch pyglet s.t. it does not open a window during
@@ -1743,11 +1738,15 @@ class SymPyDocTestFinder(DocTestFinder):
             lineno = int(matches[0][5:])
 
         else:
-            docstring = getattr(obj, '__doc__', '')
-            if docstring is None:
+            try:
+                if obj.__doc__ is None:
+                    docstring = ''
+                else:
+                    docstring = obj.__doc__
+                    if not isinstance(docstring, str):
+                        docstring = str(docstring)
+            except (TypeError, AttributeError):
                 docstring = ''
-            if not isinstance(docstring, str):
-                docstring = str(docstring)
 
         # Don't bother if the docstring is empty.
         if self._exclude_empty and not docstring:
@@ -2207,7 +2206,10 @@ class PyTestReporter(Reporter):
         self.write("cache:              %s\n" % USE_CACHE)
         version = ''
         if GROUND_TYPES =='gmpy':
-            import gmpy2 as gmpy
+            if HAS_GMPY == 1:
+                import gmpy
+            elif HAS_GMPY == 2:
+                import gmpy2 as gmpy
             version = gmpy.version()
         self.write("ground types:       %s %s\n" % (GROUND_TYPES, version))
         numpy = import_module('numpy')

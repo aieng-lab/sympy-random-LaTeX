@@ -37,7 +37,8 @@ class SeqBase(Basic):
         """
         try:
             start = expr.start
-        except NotImplementedError:
+        except (NotImplementedError,
+                AttributeError, ValueError):
             start = S.Infinity
         return start
 

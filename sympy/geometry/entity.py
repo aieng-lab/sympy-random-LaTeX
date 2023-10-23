@@ -335,7 +335,7 @@ class GeometryEntity(Basic, EvalfMixin):
         See Also
         ========
 
-        sympy.geometry.util.intersection
+        sympy.geometry.tools.intersection
 
         """
         raise NotImplementedError()
@@ -350,7 +350,7 @@ class GeometryEntity(Basic, EvalfMixin):
         =====
 
         This method is not intended to be used directly but rather
-        through the `are_similar` function found in util.py.
+        through the `are_similar` function found in tools.py.
         An entity is not required to implement this method.
         If two different types of entities can be similar, it is only
         required that one of them be able to determine this.

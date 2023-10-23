@@ -4,6 +4,8 @@ Boolean algebra module for SymPy
 
 from collections import defaultdict
 from itertools import chain, combinations, product, permutations
+
+import sympy
 from sympy.core.add import Add
 from sympy.core.basic import Basic
 from sympy.core.cache import cacheit
@@ -57,6 +59,8 @@ def as_Boolean(e):
             return e
         return false if z else true
     if isinstance(e, Boolean):
+        return e
+    if isinstance(e, sympy.Formulas):
         return e
     raise TypeError('expecting bool or Boolean, not `%s`.' % e)
 
@@ -490,7 +494,25 @@ class BooleanFunction(Application, Boolean):
 
     @classmethod
     def binary_check_and_simplify(self, *args):
-        return [as_Boolean(i) for i in args]
+        from sympy.core.relational import Relational, Eq, Ne
+        args = [as_Boolean(i) for i in args]
+        bin_syms = set().union(*[i.binary_symbols for i in args])
+        rel = set().union(*[i.atoms(Relational) for i in args])
+        reps = {}
+        for x in bin_syms:
+            for r in rel:
+                if x in bin_syms and x in r.free_symbols:
+                    if isinstance(r, (Eq, Ne)):
+                        if not (
+                                true in r.args or
+                                false in r.args):
+                            reps[r] = false
+                    else:
+                        raise TypeError(filldedent('''
+                            Incompatible use of binary symbol `%s` as a
+                            real variable in `%s`
+                            ''' % (x, r)))
+        return [i.subs(reps) for i in args]
 
     def to_nnf(self, simplify=True):
         return self._to_nnf(*self.args, simplify=simplify)
@@ -662,7 +684,7 @@ class And(LatticeOp, BooleanFunction):
                     if (e.lhs != x or x in e.rhs.free_symbols) and x not in reps:
                         try:
                             m, b = linear_coeffs(
-                                Add(e.lhs, -e.rhs, evaluate=False), x)
+                                e.rewrite(Add, evaluate=False), x)
                             enew = e.func(x, -b/m)
                             if measure(enew) <= ratio*measure(e):
                                 e = enew
@@ -994,7 +1016,7 @@ class Xor(BooleanFunction):
             for j in range(i + 1, len(rel)):
                 rj, cj = rel[j][:2]
                 if cj == nc:
-                    odd = not odd
+                    odd = ~odd
                     break
                 elif cj == c:
                     break

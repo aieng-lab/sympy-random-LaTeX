@@ -1,6 +1,5 @@
 __all__ = ['Beam',
-            'Truss', 'Cable']
+            'Truss']
 
 from .beam import Beam
 from .truss import Truss
-from .cable import Cable

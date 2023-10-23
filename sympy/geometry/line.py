@@ -317,7 +317,7 @@ class LinearEntity(GeometrySet):
         See Also
         ========
 
-        sympy.geometry.util.intersection
+        sympy.geometry.tools.intersection
 
         Examples
         ========

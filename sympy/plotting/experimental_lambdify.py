@@ -298,7 +298,7 @@ class Lambdifier:
     # Functions that are the same in numpy
     numpy_functions_same = [
         'sin', 'cos', 'tan', 'sinh', 'cosh', 'tanh', 'exp', 'log',
-        'sqrt', 'floor', 'conjugate', 'sign',
+        'sqrt', 'floor', 'conjugate',
     ]
 
     # Functions with different names in numpy

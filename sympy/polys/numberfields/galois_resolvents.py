@@ -330,10 +330,7 @@ class Resolvent:
             return a
         # If we use python's built-in `round()`, we lose precision.
         # If we use `ZZ` directly, we may add or subtract 1.
-        #
-        # XXX: We have to convert to int before converting to ZZ because
-        # flint.fmpz cannot convert a mpmath mpf.
-        return ZZ(int(a.context.nint(a)))
+        return ZZ(a.context.nint(a))
 
     def round_roots_to_integers_for_poly(self, T):
         """
@@ -661,7 +658,7 @@ def get_resolvent_by_lookup(T, number):
     """
     degree = T.degree()
     L = resolvent_coeff_lambdas[(degree, number)]
-    T_coeffs = T.rep.to_list()[1:]
+    T_coeffs = T.rep.rep[1:]
     return [ZZ(1)] + [c(*T_coeffs) for c in L]
 
 

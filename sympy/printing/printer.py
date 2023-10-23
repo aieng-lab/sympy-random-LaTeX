@@ -209,17 +209,20 @@ an expression when customizing a printer. Mistakes include:
 """
 
 from __future__ import annotations
+
+import random
 import sys
 from typing import Any, Type
 import inspect
 from contextlib import contextmanager
 from functools import cmp_to_key, update_wrapper
 
+import sympy.core
 from sympy.core.add import Add
 from sympy.core.basic import Basic
 
 from sympy.core.function import AppliedUndef, UndefinedFunction, Function
-
+from sympy.printing.util import RandomChoice
 
 
 @contextmanager
@@ -341,12 +344,32 @@ class Printer:
         """A compatibility function for ordering terms in Add. """
         order = order or self.order
 
+        if isinstance(order, RandomChoice):
+            order = order._random_state()
+
+        if sympy.core.numbers.Dots in expr:
+            order = 'original'
+
         if order == 'old':
-            return sorted(Add.make_args(expr), key=cmp_to_key(Basic._compare_pretty))
-        elif order == 'none':
-            return list(expr.args)
+            args = sorted(Add.make_args(expr), key=cmp_to_key(Basic._compare_pretty))
+        elif order == 'none' or order == 'original':
+            args = list(expr.args)
+        elif order == 'random':
+            args = list(expr.args)
+            random.shuffle(args)
         else:
-            return expr.as_ordered_terms(order=order)
+            args = expr.as_ordered_terms(order=order)
+
+        return self._flatten_args(args)
+
+    def _flatten_args(self, args):
+        result = []
+        for a in args:
+            if isinstance(a, Add):
+                result += self._flatten_args(a.args)
+            else:
+                result.append(a)
+        return result
 
 
 class _PrintFunction:

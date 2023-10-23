@@ -76,7 +76,7 @@ class re(Function):
         elif arg.is_imaginary or (I*arg).is_extended_real:
             return S.Zero
         elif arg.is_Matrix:
-            return arg.as_real_imag()[0]
+            raise NotImplementedError("Complex Matrices can not be evaluated!!!")
         elif arg.is_Function and isinstance(arg, conjugate):
             return re(arg.args[0])
         else:
@@ -198,7 +198,7 @@ class im(Function):
         elif arg.is_imaginary or (I*arg).is_extended_real:
             return -I * arg
         elif arg.is_Matrix:
-            return arg.as_real_imag()[1]
+            raise ValueError
         elif arg.is_Function and isinstance(arg, conjugate):
             return -im(arg.args[0])
         else:
@@ -527,8 +527,9 @@ class Abs(Function):
             obj = arg._eval_Abs()
             if obj is not None:
                 return obj
-        if not isinstance(arg, Expr):
-            raise TypeError("Bad argument type for Abs(): %s" % type(arg))
+        if not isinstance(arg, (Expr)):
+            pass
+#            raise TypeError("Bad argument type for Abs(): %s" % type(arg))
 
         # handle what we can
         arg = signsimp(arg, evaluate=False)

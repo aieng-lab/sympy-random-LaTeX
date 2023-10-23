@@ -1,0 +1,5 @@
+Generate the LaTeX parser using the following settings (see settings.png):
+
+encoding: utf8
+package: _antlr
+output directory: [...]parsing/latex

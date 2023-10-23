@@ -33,14 +33,7 @@ __all__ = [
     'PinJoint', 'PrismaticJoint', 'CylindricalJoint', 'PlanarJoint',
     'SphericalJoint', 'WeldJoint',
 
-    'JointsMethod',
-
-    'WrappingCylinder', 'WrappingGeometryBase', 'WrappingSphere',
-
-    'PathwayBase', 'LinearPathway', 'ObstacleSetPathway', 'WrappingPathway',
-
-    'ActuatorBase', 'ForceActuator', 'LinearDamper', 'LinearSpring',
-    'TorqueActuator',
+    'JointsMethod'
 ]
 
 from sympy.physics import vector
@@ -79,12 +72,3 @@ from .jointsmethod import JointsMethod
 
 from .joint import (PinJoint, PrismaticJoint, CylindricalJoint, PlanarJoint,
                     SphericalJoint, WeldJoint)
-
-from .wrapping_geometry import (WrappingCylinder, WrappingGeometryBase,
-                                WrappingSphere)
-
-from .pathway import (PathwayBase, LinearPathway, ObstacleSetPathway,
-                      WrappingPathway)
-
-from .actuator import (ActuatorBase, ForceActuator, LinearDamper, LinearSpring,
-                       TorqueActuator)

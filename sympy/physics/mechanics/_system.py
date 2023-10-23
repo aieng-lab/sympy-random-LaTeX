@@ -11,10 +11,9 @@ changes.
 
 from functools import wraps
 
-from sympy import Basic
-from sympy import ImmutableMatrix as Matrix
+from sympy.core.backend import Basic
+from sympy.core.backend import ImmutableMatrix as Matrix
 from sympy.core.containers import OrderedSet
-from sympy.physics.mechanics.actuator import ActuatorBase
 from sympy.physics.mechanics.body_base import BodyBase
 from sympy.physics.mechanics.functions import Lagrangian, _validate_coordinates
 from sympy.physics.mechanics.joint import Joint
@@ -88,8 +87,6 @@ class System(_Methods):
         Tuple of all joints that connect bodies in the system.
     loads : tuple of LoadBase subclasses
         Tuple of all loads that have been applied to the system.
-    actuators : tuple of ActuatorBase subclasses
-        Tuple of all actuators present in the system.
     holonomic_constraints : Matrix
         Matrix with the holonomic constraints as rows.
     nonholonomic_constraints : Matrix
@@ -242,30 +239,30 @@ class System(_Methods):
 
     """
 
-    def __init__(self, frame=None, origin=None):
+    def __init__(self, origin=None, frame=None):
         """Initialize the system.
 
         Parameters
         ==========
 
-        frame : ReferenceFrame, optional
-            The inertial frame of the system. If none is supplied, a new frame
-            will be created.
         origin : Point, optional
             The origin of the system. If none is supplied, a new origin will be
             created.
+        frame : ReferenceFrame, optional
+            The inertial frame of the system. If none is supplied, a new frame
+            will be created.
 
         """
-        if frame is None:
-            frame = ReferenceFrame('inertial_frame')
-        elif not isinstance(frame, ReferenceFrame):
-            raise TypeError('Frame must be an instance of ReferenceFrame.')
-        self._frame = frame
         if origin is None:
             origin = Point('inertial_origin')
         elif not isinstance(origin, Point):
             raise TypeError('Origin must be an instance of Point.')
         self._origin = origin
+        if frame is None:
+            frame = ReferenceFrame('inertial_frame')
+        elif not isinstance(frame, ReferenceFrame):
+            raise TypeError('Frame must be an instance of ReferenceFrame.')
+        self._frame = frame
         self._origin.set_vel(self._frame, 0)
         self._q_ind = Matrix(1, 0, []).T
         self._q_dep = Matrix(1, 0, []).T
@@ -277,7 +274,6 @@ class System(_Methods):
         self._bodies = []
         self._joints = []
         self._loads = []
-        self._actuators = []
         self._eom_method = None
 
     @classmethod
@@ -286,7 +282,7 @@ class System(_Methods):
         if isinstance(newtonian, Particle):
             raise TypeError('A Particle has no frame so cannot act as '
                             'the Newtonian.')
-        system = cls(frame=newtonian.frame, origin=newtonian.masscenter)
+        system = cls(origin=newtonian.masscenter, frame=newtonian.frame)
         system.add_bodies(newtonian)
         return system
 
@@ -350,19 +346,6 @@ class System(_Methods):
     def loads(self, loads):
         loads = self._objects_to_list(loads)
         self._loads = [_parse_load(load) for load in loads]
-
-    @property
-    def actuators(self):
-        """Tuple of actuators present in the system."""
-        return tuple(self._actuators)
-
-    @actuators.setter
-    @_reset_eom_method
-    def actuators(self, actuators):
-        actuators = self._objects_to_list(actuators)
-        self._check_objects(actuators, [], ActuatorBase, 'Actuators',
-                            'actuators')
-        self._actuators = actuators
 
     @property
     def q(self):
@@ -674,21 +657,6 @@ class System(_Methods):
         self.add_loads(*gravity(acceleration, *self.bodies))
 
     @_reset_eom_method
-    def add_actuators(self, *actuators):
-        """Add actuator(s) to the system.
-
-        Parameters
-        ==========
-
-        *actuators : subclass of ActuatorBase
-            One or more actuators.
-
-        """
-        self._check_objects(actuators, self.actuators, ActuatorBase,
-                            'Actuators', 'actuators')
-        self._actuators.extend(actuators)
-
-    @_reset_eom_method
     def add_joints(self, *joints):
         """Add joint(s) to the system.
 
@@ -775,7 +743,7 @@ class System(_Methods):
     def _form_eoms(self):
         return self.form_eoms()
 
-    def form_eoms(self, eom_method=KanesMethod, **kwargs):
+    def form_eoms(self, eom_method=KanesMethod):
         """Form the equations of motion of the system.
 
         Parameters
@@ -828,46 +796,22 @@ class System(_Methods):
 
         """
         # KanesMethod does not accept empty iterables
-        loads = self.loads + tuple(
-            load for act in self.actuators for load in act.to_loads())
-        loads = loads if loads else None
+        loads = self.loads if self.loads else None
         if issubclass(eom_method, KanesMethod):
-            disallowed_kwargs = {
-                "frame", "q_ind", "u_ind", "kd_eqs", "q_dependent",
-                "u_dependent", "configuration_constraints",
-                "velocity_constraints", "forcelist", "bodies"}
-            wrong_kwargs = disallowed_kwargs.intersection(kwargs)
-            if wrong_kwargs:
-                raise ValueError(
-                    f"The following keyword arguments are not allowed to be "
-                    f"overwritten in {eom_method.__name__}: {wrong_kwargs}.")
             velocity_constraints = self.holonomic_constraints.diff(
                 dynamicsymbols._t).col_join(self.nonholonomic_constraints)
-            kwargs = {"frame": self.frame, "q_ind": self.q_ind,
-                      "u_ind": self.u_ind, "kd_eqs": self.kdes,
-                      "q_dependent": self.q_dep, "u_dependent": self.u_dep,
-                      "configuration_constraints": self.holonomic_constraints,
-                      "velocity_constraints": velocity_constraints,
-                      "forcelist": loads, "bodies": self.bodies,
-                      "explicit_kinematics": False, **kwargs}
-            self._eom_method = eom_method(**kwargs)
+            self._eom_method = KanesMethod(
+                self.frame, self.q_ind, self.u_ind, kd_eqs=self.kdes,
+                q_dependent=self.q_dep, u_dependent=self.u_dep,
+                configuration_constraints=self.holonomic_constraints,
+                velocity_constraints=velocity_constraints,
+                forcelist=loads, bodies=self.bodies,
+                explicit_kinematics=False)
         elif issubclass(eom_method, LagrangesMethod):
-            disallowed_kwargs = {
-                "frame", "qs", "forcelist", "bodies", "hol_coneqs",
-                "nonhol_coneqs", "Lagrangian"}
-            wrong_kwargs = disallowed_kwargs.intersection(kwargs)
-            if wrong_kwargs:
-                raise ValueError(
-                    f"The following keyword arguments are not allowed to be "
-                    f"overwritten in {eom_method.__name__}: {wrong_kwargs}.")
-            kwargs = {"frame": self.frame, "qs": self.q, "forcelist": loads,
-                      "bodies": self.bodies,
-                      "hol_coneqs": self.holonomic_constraints,
-                      "nonhol_coneqs": self.nonholonomic_constraints, **kwargs}
-            if "Lagrangian" not in kwargs:
-                kwargs["Lagrangian"] = Lagrangian(kwargs["frame"],
-                                                  *kwargs["bodies"])
-            self._eom_method = eom_method(**kwargs)
+            self._eom_method = eom_method(
+                Lagrangian(self.frame, *self.bodies), self.q, loads,
+                self.bodies, self.frame, self.holonomic_constraints,
+                self.nonholonomic_constraints)
         else:
             raise NotImplementedError(f'{eom_method} has not been implemented.')
         return self.eom_method._form_eoms()

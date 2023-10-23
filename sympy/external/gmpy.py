@@ -1,8 +1,8 @@
 import os
-from ctypes import c_long, sizeof
-from functools import reduce
+import sys
 from typing import Tuple as tTuple, Type
 
+<<<<<<< Updated upstream
 from sympy.external import import_module
 
 from .pythonmpq import PythonMPQ
@@ -27,7 +27,11 @@ from .ntheory import (
     is_euler_prp as python_is_euler_prp,
     is_strong_prp as python_is_strong_prp,
 )
+=======
+import mpmath.libmp as mlib
+>>>>>>> Stashed changes
 
+from sympy.external import import_module
 
 __all__ = [
     # GROUND_TYPES is either 'gmpy' or 'python' depending on which is used. If
@@ -52,24 +56,30 @@ __all__ = [
     # MPZ is either gmpy.mpz or int.
     'MPZ',
 
-    'bit_scan1',
-    'bit_scan0',
-    'remove',
+    # Either the gmpy or the mpmath function
     'factorial',
+
+    # isqrt from gmpy or mpmath
     'sqrt',
-    'is_square',
-    'sqrtrem',
+
+    # gcd from gmpy or math
     'gcd',
+
+    # lcm from gmpy or math
     'lcm',
+<<<<<<< Updated upstream
     'gcdext',
+=======
+
+    # invert from gmpy or pow
+>>>>>>> Stashed changes
     'invert',
+
+    # legendre from gmpy or sympy
     'legendre',
+
+    # jacobi from gmpy or sympy
     'jacobi',
-    'kronecker',
-    'iroot',
-    'is_fermat_prp',
-    'is_euler_prp',
-    'is_strong_prp',
 ]
 
 
@@ -89,48 +99,24 @@ if GROUND_TYPES in ('auto', 'gmpy', 'gmpy2'):
     # Actually import gmpy2
     gmpy = import_module('gmpy2', min_module_version='2.0.0',
                 module_version_attr='version', module_version_attr_call_args=())
-    flint = None
 
-    if gmpy is None:
-        # Warn if user explicitly asked for gmpy but it isn't available.
-        if GROUND_TYPES != 'auto':
-            from warnings import warn
-            warn("gmpy library is not installed, switching to 'python' ground types")
-
-        # Fall back to Python if gmpy2 is not available
-        GROUND_TYPES = 'python'
-    else:
-        GROUND_TYPES = 'gmpy'
-
-elif GROUND_TYPES == 'flint':
-
-    # Try to use python_flint
-    flint = import_module('flint')
-    gmpy = None
-
-    if flint is None:
+    # Warn if user explicitly asked for gmpy but it isn't available.
+    if gmpy is None and GROUND_TYPES in ('gmpy', 'gmpy2'):
         from warnings import warn
-        warn("python_flint is not installed, switching to 'python' ground types")
-        GROUND_TYPES = 'python'
-    else:
-        GROUND_TYPES = 'flint'
+        warn("gmpy library is not installed, switching to 'python' ground types")
 
 elif GROUND_TYPES == 'python':
 
-    # The user asked for Python so ignore gmpy2/flint
+    # The user asked for Python so ignore gmpy2 module.
     gmpy = None
-    flint = None
-    GROUND_TYPES = 'python'
 
 else:
 
-    # Invalid value for SYMPY_GROUND_TYPES. Warn and default to Python.
+    # Invalid value for SYMPY_GROUND_TYPES. Ignore the gmpy2 module.
     from warnings import warn
     warn("SYMPY_GROUND_TYPES environment variable unrecognised. "
          "Should be 'python', 'auto', 'gmpy', or 'gmpy2'")
     gmpy = None
-    flint = None
-    GROUND_TYPES = 'python'
 
 
 #
@@ -141,13 +127,7 @@ else:
 #
 SYMPY_INTS: tTuple[Type, ...]
 
-#
-# In gmpy2 and flint, there are functions that take a long (or unsigned long) argument.
-# That is, it is not possible to input a value larger than that.
-#
-LONG_MAX = (1 << (8*sizeof(c_long) - 1)) - 1
-
-if GROUND_TYPES == 'gmpy':
+if gmpy is not None:
 
     HAS_GMPY = 2
     GROUND_TYPES = 'gmpy'
@@ -155,9 +135,6 @@ if GROUND_TYPES == 'gmpy':
     MPZ = gmpy.mpz
     MPQ = gmpy.mpq
 
-    bit_scan1 = gmpy.bit_scan1
-    bit_scan0 = gmpy.bit_scan0
-    remove = gmpy.remove
     factorial = gmpy.fac
     sqrt = gmpy.isqrt
     is_square = gmpy.is_square
@@ -168,21 +145,8 @@ if GROUND_TYPES == 'gmpy':
     invert = gmpy.invert
     legendre = gmpy.legendre
     jacobi = gmpy.jacobi
-    kronecker = gmpy.kronecker
 
-    def iroot(x, n):
-        # In the latest gmpy2, the threshold for n is ULONG_MAX,
-        # but adjust to the older one.
-        if n <= LONG_MAX:
-            return gmpy.iroot(x, n)
-        return python_iroot(x, n)
-
-    is_fermat_prp = gmpy.is_fermat_prp
-    is_euler_prp = gmpy.is_euler_prp
-    is_strong_prp = gmpy.is_strong_prp
-
-elif GROUND_TYPES == 'flint':
-
+<<<<<<< Updated upstream
     HAS_GMPY = 0
     GROUND_TYPES = 'flint'
     SYMPY_INTS = (int, flint.fmpz) # type: ignore
@@ -233,6 +197,11 @@ elif GROUND_TYPES == 'flint':
     is_strong_prp = python_is_strong_prp
 
 elif GROUND_TYPES == 'python':
+=======
+else:
+    from .pythonmpq import PythonMPQ
+    import math
+>>>>>>> Stashed changes
 
     HAS_GMPY = 0
     GROUND_TYPES = 'python'
@@ -240,6 +209,7 @@ elif GROUND_TYPES == 'python':
     MPZ = int
     MPQ = PythonMPQ
 
+<<<<<<< Updated upstream
     bit_scan1 = python_bit_scan1
     bit_scan0 = python_bit_scan0
     remove = python_remove
@@ -258,6 +228,70 @@ elif GROUND_TYPES == 'python':
     is_fermat_prp = python_is_fermat_prp
     is_euler_prp = python_is_euler_prp
     is_strong_prp = python_is_strong_prp
+=======
+    factorial = lambda x: int(mlib.ifac(x))
+    sqrt = lambda x: int(mlib.isqrt(x))
+    is_square = lambda x: x >= 0 and mlib.sqrtrem(x)[1] == 0
+    sqrtrem = lambda x: tuple(int(r) for r in mlib.sqrtrem(x))
+    if sys.version_info[:2] >= (3, 9):
+        gcd = math.gcd
+        lcm = math.lcm
+    else:
+        # Until python 3.8 is no longer supported
+        from functools import reduce
+        gcd = lambda *args: reduce(math.gcd, args, 0)
 
-else:
-    assert False
+        def lcm(*args):
+            if 0 in args:
+                return 0
+            return reduce(lambda x, y: x*y//math.gcd(x, y), args, 1)
+
+    def invert(x, m):
+        """ Return y such that x*y == 1 modulo m.
+
+        Uses ``math.pow`` but reproduces the behaviour of ``gmpy2.invert``
+        which raises ZeroDivisionError if no inverse exists.
+        """
+        try:
+            return pow(x, -1, m)
+        except ValueError:
+            raise ZeroDivisionError("invert() no inverse exists")
+
+    def legendre(x, y):
+        """ Return Legendre symbol (x / y).
+
+        Following the implementation of gmpy2,
+        the error is raised only when y is an even number.
+        """
+        if y <= 0 or not y % 2:
+            raise ValueError("y should be an odd prime")
+        x %= y
+        if not x:
+            return 0
+        if pow(x, (y - 1) // 2, y) == 1:
+            return 1
+        return -1
+>>>>>>> Stashed changes
+
+    def jacobi(x, y):
+        """ Return Jacobi symbol (x / y)."""
+        if y <= 0 or not y % 2:
+            raise ValueError("y should be an odd positive integer")
+        x %= y
+        if not x:
+            return int(y == 1)
+        if y == 1 or x == 1:
+            return 1
+        if gcd(x, y) != 1:
+            return 0
+        j = 1
+        while x != 0:
+            while x % 2 == 0 and x > 0:
+                x >>= 1
+                if y % 8 in [3, 5]:
+                    j = -j
+            x, y = y, x
+            if x % 4 == y % 4 == 3:
+                j = -j
+            x %= y
+        return j

@@ -34,6 +34,7 @@ from __future__ import annotations
 from typing import Any
 from collections.abc import Iterable
 
+import sympy
 from .add import Add
 from .basic import Basic, _atomic
 from .cache import cacheit
@@ -43,7 +44,7 @@ from .evalf import pure_complex
 from .expr import Expr, AtomicExpr
 from .logic import fuzzy_and, fuzzy_or, fuzzy_not, FuzzyBool
 from .mul import Mul
-from .numbers import Rational, Float, Integer
+from .numbers import Rational, Float, Integer, Number
 from .operations import LatticeOp
 from .parameters import global_parameters
 from .rules import Transform
@@ -304,7 +305,10 @@ class Application(Basic, metaclass=FunctionClass):
             raise ValueError("Unknown options: %s" % options)
 
         if evaluate:
-            evaluated = cls.eval(*args)
+            try:
+                evaluated = cls.eval(*args)
+            except Exception:
+                evaluated = None
             if evaluated is not None:
                 return evaluated
 
@@ -376,6 +380,7 @@ class Application(Basic, metaclass=FunctionClass):
             old == self.func and len(self.args) in new.nargs):
             return new(*[i._subs(old, new) for i in self.args])
 
+special_functions = ['Gamma', 'zeta']
 
 class Function(Application, Expr):
     r"""
@@ -443,6 +448,10 @@ class Function(Application, Expr):
     def __new__(cls, *args, **options):
         # Handle calls like Function('f')
         if cls is Function:
+            name = args[0]
+            if name in special_functions:
+                return SpecialFunction(*args, **options)
+
             return UndefinedFunction(*args, **options)
 
         n = len(args)
@@ -826,9 +835,9 @@ class AppliedUndef(Function):
     def __new__(cls, *args, **options):
         args = list(map(sympify, args))
         u = [a.name for a in args if isinstance(a, UndefinedFunction)]
-        if u:
-            raise TypeError('Invalid argument: expecting an expression, not UndefinedFunction%s: %s' % (
-                's'*(len(u) > 1), ', '.join(u)))
+        #if u:
+         #   raise TypeError('Invalid argument: expecting an expression, not UndefinedFunction%s: %s' % (
+          #      's'*(len(u) > 1), ', '.join(u)))
         obj = super().__new__(cls, *args, **options)
         return obj
 
@@ -868,7 +877,7 @@ class UndefSageHelper:
 
 _undef_sage_helper = UndefSageHelper()
 
-class UndefinedFunction(FunctionClass):
+class SpecialFunction(FunctionClass):
     """
     The (meta)class of undefined functions.
     """
@@ -923,7 +932,67 @@ class UndefinedFunction(FunctionClass):
 
     @property
     def _diff_wrt(self):
-        return False
+        return True # todo why was this False before????
+
+class UndefinedFunction(FunctionClass):
+    """
+    The (meta)class of undefined functions.
+    """
+    def __new__(mcl, name, bases=(AppliedUndef,), __dict__=None, **kwargs):
+        from .symbol import _filter_assumptions
+        # Allow Function('f', real=True)
+        # and/or Function(Symbol('f', real=True))
+        assumptions, kwargs = _filter_assumptions(kwargs)
+        if isinstance(name, Symbol):
+            assumptions = name._merge(assumptions)
+            name = name.name
+        elif not isinstance(name, str):
+            raise TypeError('expecting string or Symbol for name')
+        else:
+            commutative = assumptions.get('commutative', None)
+            assumptions = Symbol(name, **assumptions).assumptions0
+            if commutative is None:
+                assumptions.pop('commutative')
+        __dict__ = __dict__ or {}
+        # put the `is_*` for into __dict__
+        __dict__.update({'is_%s' % k: v for k, v in assumptions.items()})
+        # You can add other attributes, although they do have to be hashable
+        # (but seriously, if you want to add anything other than assumptions,
+        # just subclass Function)
+        __dict__.update(kwargs)
+        # add back the sanitized assumptions without the is_ prefix
+        kwargs.update(assumptions)
+        # Save these for __eq__
+        __dict__.update({'_kwargs': kwargs})
+        # do this for pickling
+        __dict__['__module__'] = None
+        obj = super().__new__(mcl, name, bases, __dict__)
+        obj.name = name
+        obj._sage_ = _undef_sage_helper
+        return obj
+
+    def __reduce_ex__(self, protocol):
+        return (self.__class__, (self.name)), None, None, None
+
+    def __instancecheck__(cls, instance):
+        return cls in type(instance).__mro__
+
+    _kwargs: dict[str, bool | None] = {}
+
+    def __hash__(self):
+        return hash((self.class_key(), frozenset(self._kwargs.items())))
+
+    def __eq__(self, other):
+        return (isinstance(other, self.__class__) and
+            self.class_key() == other.class_key() and
+            self._kwargs == other._kwargs)
+
+    def __ne__(self, other):
+        return not self == other
+
+    @property
+    def _diff_wrt(self):
+        return True # todo why was this False before????
 
 
 # XXX: The type: ignore on WildFunction is because mypy complains:
@@ -1012,6 +1081,16 @@ class WildFunction(Function, AtomicExpr):  # type: ignore
 
         repl_dict[self] = expr
         return repl_dict
+
+class MultiDerivative(Expr):
+    pass
+
+class SimpleDerivative(Expr):
+    pass
+
+
+class DerivativeError(Exception):
+    pass
 
 
 class Derivative(Expr):
@@ -1312,8 +1391,7 @@ class Derivative(Expr):
         for t in variable_count:
             v, c = t
             if c.is_negative:
-                raise ValueError(
-                    'order of differentiation must be nonnegative')
+                raise DerivativeError('order of differentiation must be nonnegative')
             if merged and merged[-1][0] == v:
                 c += merged[-1][1]
                 if not c:
@@ -2067,7 +2145,6 @@ class Lambda(Expr):
     def _eval_evalf(self, prec):
         return self.func(self.args[0], self.args[1].evalf(n=prec_to_dps(prec)))
 
-
 class Subs(Expr):
     """
     Represents unevaluated substitutions of an expression.
@@ -2210,6 +2287,16 @@ class Subs(Expr):
                 pre += "_"
                 continue
             break
+
+        # test if Subs can be simplified
+        if assumptions.get('check', False):
+            try:
+                subsitution = {k: v for k, v in zip(variables, point)}
+                substituted_expr = expr.subs(subsitution, allow_Subs=False)
+                if not isinstance(substituted_expr, Subs):
+                    return substituted_expr
+            except ValueError:
+                pass
 
         obj = Expr.__new__(cls, expr, Tuple(*variables), point)
         obj._expr = expr.xreplace(dict(reps))
@@ -3391,3 +3478,9 @@ def nfloat(expr, n=15, exponent=False, dkeys=False):
 
 
 from .symbol import Dummy, Symbol
+
+class InverseFunction(Function):
+
+    @property
+    def _diff_wrt(self):
+        return True

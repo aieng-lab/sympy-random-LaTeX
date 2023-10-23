@@ -2,7 +2,7 @@ from sympy.physics.mechanics import (Body, Lagrangian, KanesMethod, LagrangesMet
                                     RigidBody, Particle)
 from sympy.physics.mechanics.body_base import BodyBase
 from sympy.physics.mechanics.method import _Methods
-from sympy import Matrix
+from sympy.core.backend import Matrix
 
 __all__ = ['JointsMethod']
 

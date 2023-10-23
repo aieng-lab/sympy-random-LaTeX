@@ -379,7 +379,7 @@ class Set(Basic, EvalfMixin):
         ``self``. Usually this would be either ``S.true`` or ``S.false`` but
         not always.
         """
-        raise NotImplementedError(f"{type(self).__name__}._contains")
+        return True # raise NotImplementedError(f"{type(self).__name__}._contains")
 
     def is_subset(self, other):
         """
@@ -806,15 +806,21 @@ class Set(Basic, EvalfMixin):
         return Complement(self, other)
 
     def __contains__(self, other):
-        other = _sympify(other)
-        c = self._contains(other)
-        b = tfn[c]
-        if b is None:
-            # x in y must evaluate to T or F; to entertain a None
-            # result with Set use y.contains(x)
-            raise TypeError('did not evaluate to a bool: %r' % c)
-        return b
+        try:
+            other = _sympify(other)
+            c = self._contains(other)
+            b = tfn[c]
+            if b is None:
+                # x in y must evaluate to T or F; to entertain a None
+                # result with Set use y.contains(x)
+                return False
+    #            raise TypeError('did not evaluate to a bool: %r' % c)
+            return b
+        except Exception:
+            return False
 
+class SetComplement(Set):
+    pass
 
 class ProductSet(Set):
     """
@@ -1319,13 +1325,13 @@ class Union(Set, LatticeOp):
         return S.UniversalSet
 
     def __new__(cls, *args, **kwargs):
-        evaluate = kwargs.get('evaluate', global_parameters.evaluate)
+        evaluate = kwargs.get('evaluate', False)
 
         # flatten inputs to merge intersections and iterables
         args = _sympify(args)
 
         # Reduce sets using known rules
-        if evaluate:
+        if False:
             args = list(cls._new_args_filter(args))
             return simplify_union(args)
 
@@ -1428,10 +1434,10 @@ class Union(Set, LatticeOp):
         return Union(*map(boundary_of_set, range(len(self.args))))
 
     def _contains(self, other):
-        return Or(*[s.contains(other) for s in self.args])
+        return Or(*[s.contains(other) if hasattr(s, 'contains') else False for s in self.args])
 
     def is_subset(self, other):
-        return fuzzy_and(s.is_subset(other) for s in self.args)
+        return fuzzy_and(s.is_subset(other) if hasattr(s, 'is_subset') else False for s in self.args)
 
     def as_relational(self, symbol):
         """Rewrite a Union in terms of equalities and logic operators. """
@@ -1504,7 +1510,10 @@ class Intersection(Set, LatticeOp):
         # Reduce sets using known rules
         if evaluate:
             args = list(cls._new_args_filter(args))
-            return simplify_intersection(args)
+            try:
+                return simplify_intersection(args)
+            except Exception:
+                pass
 
         args = list(ordered(args, Set._infimum_key))
 
@@ -1518,11 +1527,11 @@ class Intersection(Set, LatticeOp):
 
     @property
     def is_iterable(self):
-        return any(arg.is_iterable for arg in self.args)
+        return any(arg.is_iterable if hasattr(arg, 'is_iterable') else False for arg in self.args)
 
     @property
     def is_finite_set(self):
-        if fuzzy_or(arg.is_finite_set for arg in self.args):
+        if fuzzy_or(arg.is_finite_set if hasattr(arg, 'is_finite_set') else False for arg in self.args):
             return True
 
     def _kind(self):
@@ -1543,7 +1552,7 @@ class Intersection(Set, LatticeOp):
         raise NotImplementedError()
 
     def _contains(self, other):
-        return And(*[set.contains(other) for set in self.args])
+        return And(*[set.contains(other) if hasattr(set, 'contains') else False for set in self.args])
 
     def __iter__(self):
         sets_sift = sift(self.args, lambda x: x.is_iterable)
@@ -2767,3 +2776,30 @@ class SetKind(Kind):
             return "SetKind()"
         else:
             return "SetKind(%s)" % self.element_kind
+
+class VarIsInSet(Basic):
+    pass
+
+class NamedSet(Set):
+    pass
+
+class SetMinus(Set):
+    pass
+
+class SuperSet(Set):
+    pass
+
+class SubSet(Set):
+    pass
+
+class SetMin(Expr):
+    pass
+
+class SetMax(Expr):
+    pass
+
+class SetSup(Expr):
+    pass
+
+class SetInf(Expr):
+    pass

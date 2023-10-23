@@ -11,8 +11,6 @@ from .logic import fuzzy_bool, fuzzy_xor, fuzzy_and, fuzzy_not
 from sympy.logic.boolalg import Boolean, BooleanAtom
 from sympy.utilities.iterables import sift
 from sympy.utilities.misc import filldedent
-from sympy.utilities.exceptions import sympy_deprecation_warning
-
 
 __all__ = (
     'Rel', 'Eq', 'Ne', 'Lt', 'Le', 'Gt', 'Ge',
@@ -24,6 +22,7 @@ from .expr import Expr
 from sympy.multipledispatch import dispatch
 from .containers import Tuple
 from .symbol import Symbol
+from .numbers import Number, Integer
 
 
 def _nontrivBool(side):
@@ -534,7 +533,6 @@ class Relational(Boolean, EvalfMixin):
 
 Rel = Relational
 
-
 class Equality(Relational):
     """
     An equal relation between two objects.
@@ -596,7 +594,7 @@ class Equality(Relational):
 
     Since this object is already an expression, it does not respond to
     the method ``as_expr`` if one tries to create `x - y` from ``Eq(x, y)``.
-    If ``eq = Eq(x, y)`` then write `eq.lhs - eq.rhs` to get ``x - y``.
+    This can be done with the ``rewrite(Add)`` method.
 
     .. deprecated:: 1.5
 
@@ -637,34 +635,19 @@ class Equality(Relational):
         non-canonical args will be returned. If one side is 0, the
         non-zero side will be returned.
 
-        .. deprecated:: 1.13
-
-           The method ``Eq.rewrite(Add)`` is deprecated.
-           See :ref:`eq-rewrite-Add` for details.
-
         Examples
         ========
 
         >>> from sympy import Eq, Add
         >>> from sympy.abc import b, x
         >>> eq = Eq(x + b, x - b)
-        >>> eq.rewrite(Add)  #doctest: +SKIP
+        >>> eq.rewrite(Add)
         2*b
-        >>> eq.rewrite(Add, evaluate=None).args  #doctest: +SKIP
+        >>> eq.rewrite(Add, evaluate=None).args
         (b, b, x, -x)
-        >>> eq.rewrite(Add, evaluate=False).args  #doctest: +SKIP
+        >>> eq.rewrite(Add, evaluate=False).args
         (b, x, b, -x)
         """
-        sympy_deprecation_warning("""
-        Eq.rewrite(Add) is deprecated.
-
-        For ``eq = Eq(a, b)`` use ``eq.lhs - eq.rhs`` to obtain
-        ``a - b``.
-        """,
-            deprecated_since_version="1.13",
-            active_deprecations_target="eq-rewrite-Add",
-            stacklevel=5,
-        )
         from .add import _unevaluated_Add, Add
         if L == 0:
             return R
@@ -704,7 +687,7 @@ class Equality(Relational):
                 from sympy.solvers.solveset import linear_coeffs
                 x = free.pop()
                 m, b = linear_coeffs(
-                    Add(e.lhs, -e.rhs, evaluate=False), x)
+                    e.rewrite(Add, evaluate=False), x)
                 if m.is_zero is False:
                     enew = e.func(x, -b / m)
                 else:
@@ -736,6 +719,9 @@ class Equality(Relational):
 
 
 Eq = Equality
+
+class Defines(Equality):
+    pass
 
 
 class Unequality(Relational):
@@ -1224,6 +1210,22 @@ def _n2(a, b):
 def _eval_is_ge(lhs, rhs):
     return None
 
+@dispatch(Number, StrictLessThan)
+def _eval_is_ge(lhs, rhs):
+    return None
+
+@dispatch(Number, StrictGreaterThan)
+def _eval_is_ge(lhs, rhs):
+    return None
+
+@dispatch(StrictLessThan, Number)
+def _eval_is_ge(lhs, rhs):
+    return None
+
+@dispatch(StrictGreaterThan, Number)
+def _eval_is_ge(lhs, rhs):
+    return None
+
 
 @dispatch(Basic, Basic)
 def _eval_is_eq(lhs, rhs):
@@ -1234,6 +1236,9 @@ def _eval_is_eq(lhs, rhs):
 def _eval_is_eq(lhs, rhs):  # noqa:F811
     return False
 
+@dispatch(StrictLessThan, Expr)
+def _eval_is_eq(lhs, rhs):
+    return False # todo (result important?)
 
 @dispatch(Tuple, AppliedUndef) # type: ignore
 def _eval_is_eq(lhs, rhs):  # noqa:F811
@@ -1372,10 +1377,16 @@ def is_ge(lhs, rhs, assumptions=None):
     """
     from sympy.assumptions.wrapper import AssumptionsWrapper, is_extended_nonnegative
 
-    if not (isinstance(lhs, Expr) and isinstance(rhs, Expr)):
-        raise TypeError("Can only compare inequalities with Expr")
 
-    retval = _eval_is_ge(lhs, rhs)
+
+    #if not (isinstance(lhs, Expr) and isinstance(rhs, Expr)):
+     #   raise TypeError("Can only compare inequalities with Expr")
+
+    try:
+        retval = _eval_is_ge(lhs, rhs)
+    except NotImplementedError as e:
+        print(e)
+        retval = None
 
     if retval is not None:
         return retval
@@ -1497,7 +1508,11 @@ def is_eq(lhs, rhs, assumptions=None):
             if retval is not None:
                 return retval
 
-    retval = _eval_is_eq(lhs, rhs)
+    try:
+        retval = _eval_is_eq(lhs, rhs)
+    except Exception:
+        retval = None
+
     if retval is not None:
         return retval
 
@@ -1599,4 +1614,7 @@ def is_eq(lhs, rhs, assumptions=None):
             # (inf or nan)/x != 0
             rv = False
         if rv is not None:
-            return rv
+            return
+
+class Approx(Relational):
+    rel_op = '~'

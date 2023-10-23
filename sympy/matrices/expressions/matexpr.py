@@ -200,9 +200,6 @@ class MatrixExpr(Expr):
     def _eval_transpose(self):
         return Transpose(self)
 
-    def _eval_trace(self):
-        return None
-
     def _eval_power(self, exp):
         """
         Override this in sub-classes to implement simplification of powers.  The cases where the exponent

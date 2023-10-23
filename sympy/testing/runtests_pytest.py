@@ -289,7 +289,7 @@ def test(*paths, subprocess=True, rerun=0, **kwargs):
 
     Run all tests in sympy/core and sympy/utilities:
 
-    >>> sympy.test("/core", "/util")  # doctest: +SKIP
+    >>> sympy.test("/core", "/tools")  # doctest: +SKIP
 
     Run specific test from a file:
 

@@ -1,3 +1,4 @@
+import sympy
 from sympy.core.add import Add
 from sympy.core.containers import Tuple
 from sympy.core.expr import Expr
@@ -190,8 +191,15 @@ def _process_limits(*symbols, discrete=None):
                     elif lenV == 2:
                         limits.append(Tuple(newsymbol, V[1]))
                         continue
+                elif len(symbols[0]) > 0 and isinstance(symbols[0][0], Mul) and 'subs' in str(symbols[0][0]):
+                    limits.append(tuple(symbols[0]))
+            elif len(symbols[0]) > 0 and isinstance(symbols[0][0], Mul) and 'subs' in str(symbols[0][0]):
+                limits.append(tuple(symbols[0]))
 
-        raise ValueError('Invalid limits given: %s' % str(symbols))
+        elif len(symbols[0]) > 0 and isinstance(symbols[0][0], Mul) and 'subs' in str(symbols[0][0]):
+            limits.append(tuple(symbols[0]))
+        else:
+            raise ValueError('Invalid limits given: %s' % str(symbols))
 
     return limits, orientation
 
@@ -322,23 +330,26 @@ class ExprWithLimits(Expr):
         function, limits = self.function, self.limits
         # mask off non-symbol integration variables that have
         # more than themself as a free symbol
-        reps = {i[0]: i[0] if i[0].free_symbols == {i[0]} else Dummy()
-            for i in self.limits}
-        function = function.xreplace(reps)
-        isyms = function.free_symbols
-        for xab in limits:
-            v = reps[xab[0]]
-            if len(xab) == 1:
-                isyms.add(v)
-                continue
-            # take out the target symbol
-            if v in isyms:
-                isyms.remove(v)
-            # add in the new symbols
-            for i in xab[1:]:
-                isyms.update(i.free_symbols)
-        reps = {v: k for k, v in reps.items()}
-        return {reps.get(_, _) for _ in isyms}
+        if isinstance(limits[0], sympy.Symbol):
+            return limits[0].free_symbols
+        else:
+            reps = {i[0]: i[0] if i[0].free_symbols == {i[0]} else Dummy()
+                for i in self.limits}
+            function = function.xreplace(reps)
+            isyms = function.free_symbols
+            for xab in limits:
+                v = reps[xab[0]]
+                if len(xab) == 1:
+                    isyms.add(v)
+                    continue
+                # take out the target symbol
+                #if v in isyms:
+                 #   isyms.remove(v)
+                # add in the new symbols
+                for i in xab:
+                    isyms.update(i.free_symbols)
+            reps = {v: k for k, v in reps.items()}
+            return {reps.get(_, _) for _ in isyms}
 
     @property
     def is_number(self):
@@ -378,54 +389,61 @@ class ExprWithLimits(Expr):
 
         """
         func, limits = self.function, list(self.limits)
+        if not isinstance(limits[0], sympy.Symbol):
 
-        # If one of the expressions we are replacing is used as a func index
-        # one of two things happens.
-        #   - the old variable first appears as a free variable
-        #     so we perform all free substitutions before it becomes
-        #     a func index.
-        #   - the old variable first appears as a func index, in
-        #     which case we ignore.  See change_index.
+            # If one of the expressions we are replacing is used as a func index
+            # one of two things happens.
+            #   - the old variable first appears as a free variable
+            #     so we perform all free substitutions before it becomes
+            #     a func index.
+            #   - the old variable first appears as a func index, in
+            #     which case we ignore.  See change_index.
 
-        # Reorder limits to match standard mathematical practice for scoping
-        limits.reverse()
+            # Reorder limits to match standard mathematical practice for scoping
+            limits.reverse()
 
-        if not isinstance(old, Symbol) or \
-                old.free_symbols.intersection(self.free_symbols):
-            sub_into_func = True
-            for i, xab in enumerate(limits):
-                if 1 == len(xab) and old == xab[0]:
-                    if new._diff_wrt:
-                        xab = (new,)
-                    else:
-                        xab = (old, old)
-                limits[i] = Tuple(xab[0], *[l._subs(old, new) for l in xab[1:]])
-                if len(xab[0].free_symbols.intersection(old.free_symbols)) != 0:
-                    sub_into_func = False
-                    break
-            if isinstance(old, (AppliedUndef, UndefinedFunction)):
-                sy2 = set(self.variables).intersection(set(new.atoms(Symbol)))
-                sy1 = set(self.variables).intersection(set(old.args))
-                if not sy2.issubset(sy1):
-                    raise ValueError(
-                        "substitution cannot create dummy dependencies")
+            if not isinstance(old, Symbol) or \
+                    old.free_symbols.intersection(self.free_symbols):
                 sub_into_func = True
-            if sub_into_func:
-                func = func.subs(old, new)
-        else:
-            # old is a Symbol and a dummy variable of some limit
-            for i, xab in enumerate(limits):
-                if len(xab) == 3:
-                    limits[i] = Tuple(xab[0], *[l._subs(old, new) for l in xab[1:]])
-                    if old == xab[0]:
-                        break
-        # simplify redundant limits (x, x)  to (x, )
-        for i, xab in enumerate(limits):
-            if len(xab) == 2 and (xab[0] - xab[1]).is_zero:
-                limits[i] = Tuple(xab[0], )
+                for i, xab in enumerate(limits):
+                    if 1 == len(xab) and old == xab[0]:
+                        if new._diff_wrt:
+                            xab = (new,)
+                        else:
+                            xab = (old,) # todo why??
+                    limits[i] = Tuple(*[l._subs(old, new) for l in xab])
+                if isinstance(old, (AppliedUndef, UndefinedFunction)):
+                    try:
+                        sy2 = set(self.variables).intersection(set(new.atoms(Symbol)))
+                        sy1 = set(self.variables).intersection(set(old.args))
+                        if not sy2.issubset(sy1):
+                            raise ValueError(
+                                "substitution cannot create dummy dependencies")
+                    except TypeError:
+                        pass
+                    sub_into_func = True
+                if sub_into_func:
+                    func = func.subs(old, new)
+            else:
+                # old is a Symbol and a dummy variable of some limit
+                for i, xab in enumerate(limits):
+                    if len(xab) == 3:
+                        limits[i] = Tuple(*[l._subs(old, new) for l in xab])
+                        if old == xab[0]:
+                            break
 
-        # Reorder limits back to representation-form
-        limits.reverse()
+
+                func = func._subs(old, new)
+            # simplify redundant limits (x, x)  to (x, )
+            for i, xab in enumerate(limits):
+                if len(xab) == 2 and (xab[0] - xab[1]).is_zero:
+                    limits[i] = Tuple(xab[0], )
+
+            # Reorder limits back to representation-form
+            limits.reverse()
+        else:
+            limits = [limits[0]._subs(old, new), limits[1:]]
+            func = func._subs(old, new)
 
         return self.func(func, *limits)
 
@@ -544,6 +562,7 @@ class AddWithLimits(ExprWithLimits):
 
     def __new__(cls, function, *symbols, **assumptions):
         from sympy.concrete.summations import Sum
+
         pre = _common_new(cls, function, *symbols,
             discrete=issubclass(cls, Sum), **assumptions)
         if isinstance(pre, tuple):

@@ -13,6 +13,9 @@ See the webpage for more information and documentation:
 
 
 import sys
+
+from .core.add import PlusMinus
+
 if sys.version_info < (3, 8):
     raise ImportError("Python version 3.8 or above is required for SymPy.")
 del sys
@@ -50,19 +53,22 @@ def __sympy_debug():
 SYMPY_DEBUG = __sympy_debug()  # type: bool
 
 from .core import (sympify, SympifyError, cacheit, Basic, Atom,
-        preorder_traversal, S, Expr, AtomicExpr, UnevaluatedExpr, Symbol,
-        Wild, Dummy, symbols, var, Number, Float, Rational, Integer,
-        NumberSymbol, RealNumber, igcd, ilcm, seterr, E, I, nan, oo, pi, zoo,
-        AlgebraicNumber, comp, mod_inverse, Pow, integer_nthroot, integer_log,
-        trailing, Mul, prod, Add, Mod, Rel, Eq, Ne, Lt, Le, Gt, Ge, Equality,
-        GreaterThan, LessThan, Unequality, StrictGreaterThan, StrictLessThan,
-        vectorize, Lambda, WildFunction, Derivative, diff, FunctionClass,
-        Function, Subs, expand, PoleError, count_ops, expand_mul, expand_log,
-        expand_func, expand_trig, expand_complex, expand_multinomial, nfloat,
-        expand_power_base, expand_power_exp, arity, PrecisionExhausted, N,
-        evalf, Tuple, Dict, gcd_terms, factor_terms, factor_nc, evaluate,
-        Catalan, EulerGamma, GoldenRatio, TribonacciConstant, bottom_up, use,
-        postorder_traversal, default_sort_key, ordered, num_digits)
+                   preorder_traversal, S, Expr, AtomicExpr, UnevaluatedExpr, Symbol,
+                   Wild, Dummy, symbols, var, Number, Float, Rational, Integer,
+                   NumberSymbol, RealNumber, igcd, ilcm, seterr, E, I, nan, oo, pi, zoo,
+                   AlgebraicNumber, comp, mod_inverse, Pow, integer_nthroot, integer_log,
+                   Mul, prod, Add, Mod, Rel, Eq, Approx, Ne, Lt, Le, Gt, Ge, Equality,
+                   GreaterThan, LessThan, Unequality, StrictGreaterThan, StrictLessThan,
+                   vectorize, Lambda, WildFunction, Derivative, diff, FunctionClass,
+                   Function, Subs, expand, PoleError, count_ops, expand_mul, expand_log,
+                   expand_func, expand_trig, expand_complex, expand_multinomial, nfloat,
+                   expand_power_base, expand_power_exp, arity, PrecisionExhausted, N,
+                   evalf, Tuple, Dict, gcd_terms, factor_terms, factor_nc, evaluate,
+                   Catalan, EulerGamma, GoldenRatio, TribonacciConstant, bottom_up, use,
+                   postorder_traversal, default_sort_key, ordered, BinaryOperator)
+
+from .core.formulas import Formulas, FormulasOr
+#from .functions.elementary.probability import Var, ExpectedValue, Cov
 
 from .logic import (to_cnf, to_dnf, to_nnf, And, Or, Not, Xor, Nand, Nor,
         Implies, Equivalent, ITE, POSform, SOPform, simplify_logic, bool_map,
@@ -77,10 +83,10 @@ from .polys import (Poly, PurePoly, poly_from_expr, parallel_poly_from_expr,
         subresultants, resultant, discriminant, cofactors, gcd_list, gcd,
         lcm_list, lcm, terms_gcd, trunc, monic, content, primitive, compose,
         decompose, sturm, gff_list, gff, sqf_norm, sqf_part, sqf_list, sqf,
-        factor_list, factor, intervals, refine_root, count_roots, all_roots,
-        real_roots, nroots, ground_roots, nth_power_roots_poly, cancel,
-        reduced, groebner, is_zero_dimensional, GroebnerBasis, poly,
-        symmetrize, horner, interpolate, rational_interpolate, viete, together,
+        factor_list, factor, intervals, refine_root, count_roots, real_roots,
+        nroots, ground_roots, nth_power_roots_poly, cancel, reduced, groebner,
+        is_zero_dimensional, GroebnerBasis, poly, symmetrize, horner,
+        interpolate, rational_interpolate, viete, together,
         BasePolynomialError, ExactQuotientFailed, PolynomialDivisionFailed,
         OperationNotSupported, HeuristicGCDFailed, HomomorphismFailed,
         IsomorphismFailed, ExtraneousFactors, EvaluationFailed,
@@ -118,7 +124,7 @@ from .functions import (factorial, factorial2, rf, ff, binomial,
         adjoint, polarify, unpolarify, sin, cos, tan, sec, csc, cot, sinc,
         asin, acos, atan, asec, acsc, acot, atan2, exp_polar, exp, ln, log,
         LambertW, sinh, cosh, tanh, coth, sech, csch, asinh, acosh, atanh,
-        acoth, asech, acsch, floor, ceiling, frac, Piecewise, piecewise_fold,
+        acoth, asech, acsch, floor, ceiling, frac, Piecewise, Otherwise, piecewise_fold,
         piecewise_exclusive, erf, erfc, erfi, erf2, erfinv, erfcinv, erf2inv,
         Ei, expint, E1, li, Li, Si, Ci, Shi, Chi, fresnels, fresnelc, gamma,
         lowergamma, uppergamma, polygamma, loggamma, digamma, trigamma,
@@ -137,7 +143,7 @@ from .ntheory import (nextprime, prevprime, prime, primepi, primerange,
         randprime, Sieve, sieve, primorial, cycle_length, composite,
         compositepi, isprime, divisors, proper_divisors, factorint,
         multiplicity, perfect_power, pollard_pm1, pollard_rho, primefactors,
-        totient, divisor_count, proper_divisor_count, divisor_sigma,
+        totient, trailing, divisor_count, proper_divisor_count, divisor_sigma,
         factorrat, reduced_totient, primenu, primeomega,
         mersenne_prime_exponent, is_perfect, is_mersenne_prime, is_abundant,
         is_deficient, is_amicable, abundance, npartitions, is_primitive_root,
@@ -266,8 +272,8 @@ __all__ = [
     'Symbol', 'Wild', 'Dummy', 'symbols', 'var', 'Number', 'Float',
     'Rational', 'Integer', 'NumberSymbol', 'RealNumber', 'igcd', 'ilcm',
     'seterr', 'E', 'I', 'nan', 'oo', 'pi', 'zoo', 'AlgebraicNumber', 'comp',
-    'mod_inverse', 'Pow', 'integer_nthroot', 'integer_log', 'trailing', 'Mul', 'prod',
-    'Add', 'Mod', 'Rel', 'Eq', 'Ne', 'Lt', 'Le', 'Gt', 'Ge', 'Equality',
+    'mod_inverse', 'Pow', 'integer_nthroot', 'integer_log', 'Mul', 'prod',
+    'Add', 'PlusMinus', 'Mod', 'Rel', 'Eq', 'Approx', 'Ne', 'Lt', 'Le', 'Gt', 'Ge', 'Equality',
     'GreaterThan', 'LessThan', 'Unequality', 'StrictGreaterThan',
     'StrictLessThan', 'vectorize', 'Lambda', 'WildFunction', 'Derivative',
     'diff', 'FunctionClass', 'Function', 'Subs', 'expand', 'PoleError',
@@ -276,7 +282,7 @@ __all__ = [
     'expand_power_exp', 'arity', 'PrecisionExhausted', 'N', 'evalf', 'Tuple',
     'Dict', 'gcd_terms', 'factor_terms', 'factor_nc', 'evaluate', 'Catalan',
     'EulerGamma', 'GoldenRatio', 'TribonacciConstant', 'bottom_up', 'use',
-    'postorder_traversal', 'default_sort_key', 'ordered', 'num_digits',
+    'postorder_traversal', 'default_sort_key', 'ordered',
 
     # sympy.logic
     'to_cnf', 'to_dnf', 'to_nnf', 'And', 'Or', 'Not', 'Xor', 'Nand', 'Nor',
@@ -295,10 +301,10 @@ __all__ = [
     'gcd', 'lcm_list', 'lcm', 'terms_gcd', 'trunc', 'monic', 'content',
     'primitive', 'compose', 'decompose', 'sturm', 'gff_list', 'gff',
     'sqf_norm', 'sqf_part', 'sqf_list', 'sqf', 'factor_list', 'factor',
-    'intervals', 'refine_root', 'count_roots', 'all_roots', 'real_roots',
-    'nroots', 'ground_roots', 'nth_power_roots_poly', 'cancel', 'reduced',
-    'groebner', 'is_zero_dimensional', 'GroebnerBasis', 'poly', 'symmetrize',
-    'horner', 'interpolate', 'rational_interpolate', 'viete', 'together',
+    'intervals', 'refine_root', 'count_roots', 'real_roots', 'nroots',
+    'ground_roots', 'nth_power_roots_poly', 'cancel', 'reduced', 'groebner',
+    'is_zero_dimensional', 'GroebnerBasis', 'poly', 'symmetrize', 'horner',
+    'interpolate', 'rational_interpolate', 'viete', 'together',
     'BasePolynomialError', 'ExactQuotientFailed', 'PolynomialDivisionFailed',
     'OperationNotSupported', 'HeuristicGCDFailed', 'HomomorphismFailed',
     'IsomorphismFailed', 'ExtraneousFactors', 'EvaluationFailed',
@@ -341,7 +347,7 @@ __all__ = [
     'sec', 'csc', 'cot', 'sinc', 'asin', 'acos', 'atan', 'asec', 'acsc',
     'acot', 'atan2', 'exp_polar', 'exp', 'ln', 'log', 'LambertW', 'sinh',
     'cosh', 'tanh', 'coth', 'sech', 'csch', 'asinh', 'acosh', 'atanh',
-    'acoth', 'asech', 'acsch', 'floor', 'ceiling', 'frac', 'Piecewise',
+    'acoth', 'asech', 'acsch', 'floor', 'ceiling', 'frac', 'Piecewise', 'Otherwise',
     'piecewise_fold', 'piecewise_exclusive', 'erf', 'erfc', 'erfi', 'erf2',
     'erfinv', 'erfcinv', 'erf2inv', 'Ei', 'expint', 'E1', 'li', 'Li', 'Si',
     'Ci', 'Shi', 'Chi', 'fresnels', 'fresnelc', 'gamma', 'lowergamma',
@@ -364,7 +370,7 @@ __all__ = [
     'Sieve', 'sieve', 'primorial', 'cycle_length', 'composite', 'compositepi',
     'isprime', 'divisors', 'proper_divisors', 'factorint', 'multiplicity',
     'perfect_power', 'pollard_pm1', 'pollard_rho', 'primefactors', 'totient',
-    'divisor_count', 'proper_divisor_count', 'divisor_sigma',
+    'trailing', 'divisor_count', 'proper_divisor_count', 'divisor_sigma',
     'factorrat', 'reduced_totient', 'primenu', 'primeomega',
     'mersenne_prime_exponent', 'is_perfect', 'is_mersenne_prime',
     'is_abundant', 'is_deficient', 'is_amicable', 'abundance', 'npartitions',
@@ -497,6 +503,8 @@ __all__ = [
 
     # sympy.testing
     'test', 'doctest',
+
+    'BinaryOperator'
 ]
 
 
@@ -535,3 +543,12 @@ __all__.extend((
     'tensor',
     'utilities',
 ))
+
+class NotAllowedSymbolException(Exception):
+    pass
+
+class SubExpr(Expr):
+    pass
+
+class SupExpr(Expr):
+    pass

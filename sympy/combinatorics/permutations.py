@@ -6,7 +6,6 @@ from functools import reduce
 from sympy.core.parameters import global_parameters
 from sympy.core.basic import Atom
 from sympy.core.expr import Expr
-from sympy.core.numbers import int_valued
 from sympy.core.numbers import Integer
 from sympy.core.sympify import _sympify
 from sympy.matrices import zeros
@@ -1051,12 +1050,6 @@ class Permutation(Atom):
         p._size = len(perm)
         return p
 
-    def copy(self):
-        return self.__class__(self.array_form)
-
-    def __getnewargs__(self):
-        return (self.array_form,)
-
     def _hashable_content(self):
         # the array_form (a list) is the Permutation arg, so we need to
         # return a tuple, instead
@@ -1438,7 +1431,7 @@ class Permutation(Atom):
         >>> 2^p == p(2) == 9
         True
         """
-        if int_valued(i):
+        if int(i) == i:
             return self(i)
         else:
             raise NotImplementedError(

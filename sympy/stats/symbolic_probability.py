@@ -206,15 +206,21 @@ class Expectation(Expr):
         if expr.is_Matrix:
             from sympy.stats.symbolic_multivariate_probability import ExpectationMatrix
             return ExpectationMatrix(expr, condition)
-        if condition is None:
-            if not is_random(expr):
-                return expr
-            obj = Expr.__new__(cls, expr)
-        else:
-            condition = _sympify(condition)
-            obj = Expr.__new__(cls, expr, condition)
+        obj = Expr.__new__(cls, expr)
+
+        if False: # todo???
+            if condition is None:
+                if not is_random(expr):
+                    return expr
+                obj = Expr.__new__(cls, expr)
+            else:
+                condition = _sympify(condition)
+                obj = Expr.__new__(cls, expr, condition)
         obj._condition = condition
         return obj
+
+    def _sympystr(self, printer):
+        return "E[%s]" % self.args
 
     def expand(self, **hints):
         expr = self.args[0]
@@ -685,3 +691,10 @@ class CentralMoment(Expr):
 
     def _eval_rewrite_as_Integral(self, X, n, condition=None, **kwargs):
         return self.rewrite(Expectation).rewrite(Integral)
+
+class BasicProbability(Expr):
+
+    pass
+
+class ConditionalProbability(Expr):
+    pass

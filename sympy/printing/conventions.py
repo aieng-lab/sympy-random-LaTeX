@@ -85,4 +85,4 @@ def requires_partial(expr):
     if not isinstance(expr.free_symbols, Iterable):
         return len(set(expr.variables)) > 1
 
-    return sum(not s.is_integer for s in expr.free_symbols) > 1
+    return False #sum(not s.is_integer for s in expr.free_symbols) > 1

@@ -52,7 +52,7 @@ def declare_frames(self, ctx, i, j=None):
     self.symbol_table.update({name1 + "3>": name2 + ".z"})
 
     self.type2.update({name1: "frame"})
-    self.write(name2 + " = " + "_me.ReferenceFrame('" + name1 + "')\n")
+    self.load_and_write(name2 + " = " + "_me.ReferenceFrame('" + name1 + "')\n")
 
 def declare_points(self, ctx, i, j=None):
     if "{" in ctx.getText():
@@ -67,7 +67,7 @@ def declare_points(self, ctx, i, j=None):
 
     self.symbol_table2.update({name1: name2})
     self.type2.update({name1: "point"})
-    self.write(name2 + " = " + "_me.Point('" + name1 + "')\n")
+    self.load_and_write(name2 + " = " + "_me.Point('" + name1 + "')\n")
 
 def declare_particles(self, ctx, i, j=None):
     if "{" in ctx.getText():
@@ -83,8 +83,8 @@ def declare_particles(self, ctx, i, j=None):
     self.symbol_table2.update({name1: name2})
     self.type2.update({name1: "particle"})
     self.bodies.update({name1: name2})
-    self.write(name2 + " = " + "_me.Particle('" + name1 + "', " + "_me.Point('" +
-                name1 + "_pt" + "'), " + "_sm.Symbol('m'))\n")
+    self.load_and_write(name2 + " = " + "_me.Particle('" + name1 + "', " + "_me.Point('" +
+                        name1 + "_pt" + "'), " + "_sm.Symbol('m'))\n")
 
 def declare_bodies(self, ctx, i, j=None):
     if "{" in ctx.getText():
@@ -109,14 +109,14 @@ def declare_bodies(self, ctx, i, j=None):
     self.type2.update({name1: "bodies"})
     self.type2.update({name1+"o": "point"})
 
-    self.write(masscenter + " = " + "_me.Point('" + name1 + "_cm" + "')\n")
+    self.load_and_write(masscenter + " = " + "_me.Point('" + name1 + "_cm" + "')\n")
     if self.newtonian:
-        self.write(masscenter + ".set_vel(" + self.newtonian + ", " + "0)\n")
-    self.write(refFrame + " = " + "_me.ReferenceFrame('" + name1 + "_f" + "')\n")
+        self.load_and_write(masscenter + ".set_vel(" + self.newtonian + ", " + "0)\n")
+    self.load_and_write(refFrame + " = " + "_me.ReferenceFrame('" + name1 + "_f" + "')\n")
     # We set a dummy mass and inertia here.
     # They will be reset using the setters later in the code anyway.
-    self.write(name2 + " = " + "_me.RigidBody('" + name1 + "', " + masscenter + ", " +
-                refFrame + ", " + "_sm.symbols('m'), (_me.outer(" + refFrame +
+    self.load_and_write(name2 + " = " + "_me.RigidBody('" + name1 + "', " + masscenter + ", " +
+                        refFrame + ", " + "_sm.symbols('m'), (_me.outer(" + refFrame +
                 ".x," + refFrame + ".x)," + masscenter + "))\n")
 
 def inertia_func(self, v1, v2, l, frame):
@@ -171,7 +171,7 @@ def processConstants(self, ctx):
     if "=" in ctx.getText():
         self.symbol_table.update({name: name})
         # self.inputs.update({self.symbol_table[name]: self.getValue(ctx.getChild(2))})
-        self.write(self.symbol_table[name] + " = " + "_sm.S(" + self.getValue(ctx.getChild(2)) + ")\n")
+        self.load_and_write(self.symbol_table[name] + " = " + "_sm.S(" + self.getValue(ctx.getChild(2)) + ")\n")
         self.type.update({name: "constants"})
         return
 
@@ -252,15 +252,15 @@ def writeConstants(self, ctx):
     if l1:
         a = ", ".join(l1) + " = " + "_sm.symbols(" + "'" +\
             " ".join(l1) + "'" + real + ")\n"
-        self.write(a)
+        self.load_and_write(a)
     if l2:
         a = ", ".join(l2) + " = " + "_sm.symbols(" + "'" +\
             " ".join(l2) + "'" + real + ", nonnegative=True)\n"
-        self.write(a)
+        self.load_and_write(a)
     if l3:
         a = ", ".join(l3) + " = " + "_sm.symbols(" + "'" + \
             " ".join(l3) + "'" + real + ", nonpositive=True)\n"
-        self.write(a)
+        self.load_and_write(a)
     self.var_list = []
 
 
@@ -269,7 +269,7 @@ def processVariables(self, ctx):
     name = ctx.ID().getText().lower()
     if "=" in ctx.getText():
         text = name + "'"*(ctx.getChildCount()-3)
-        self.write(text + " = " + self.getValue(ctx.expr()) + "\n")
+        self.load_and_write(text + " = " + self.getValue(ctx.expr()) + "\n")
         return
 
     # Process variables of the type: Variables qA, qB
@@ -379,7 +379,7 @@ def writeVariables(self, ctx):
             a = ", ".join(list(filter(lambda x: self.sign[x] == i, self.var_list))) + " = " +\
                 "_me.dynamicsymbols(" + "'" + " ".join(l) + "'" + t + j + ")\n"
             l = []
-            self.write(a)
+            self.load_and_write(a)
         self.maxDegree = 0
     self.var_list = []
 
@@ -394,8 +394,8 @@ def writeImaginary(self, ctx):
     a = ", ".join(self.var_list) + " = " + "_sm.symbols(" + "'" + \
         " ".join(self.var_list) + "')\n"
     b = ", ".join(self.var_list) + " = " + "_sm.I\n"
-    self.write(a)
-    self.write(b)
+    self.load_and_write(a)
+    self.load_and_write(b)
     self.var_list = []
 
 if AutolevListener:

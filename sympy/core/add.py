@@ -1,18 +1,21 @@
 from typing import Tuple as tTuple
 from collections import defaultdict
-from functools import reduce
+from functools import cmp_to_key, reduce
 from operator import attrgetter
-from .basic import _args_sortkey
+from .basic import Basic
 from .parameters import global_parameters
 from .logic import _fuzzy_group, fuzzy_or, fuzzy_not
 from .singleton import S
 from .operations import AssocOp, AssocOpDispatcher
 from .cache import cacheit
-from .numbers import equal_valued
-from .intfunc import ilcm, igcd
+from .numbers import ilcm, igcd, equal_valued
 from .expr import Expr
 from .kind import UndefinedKind
 from sympy.utilities.iterables import is_sequence, sift
+
+# Key for sorting commutative args in canonical order
+_args_sortkey = cmp_to_key(Basic.compare)
+
 
 def _could_extract_minus_sign(expr):
     # assume expr is Add-like
@@ -1278,7 +1281,153 @@ class Add(Expr, AssocOp):
             return super().__neg__()
         return Mul(S.NegativeOne, self)
 
+
+class PlusMinus(Expr, AssocOp):
+    """
+    Expression representing addition operation for algebraic group.
+
+    .. deprecated:: 1.7
+
+       Using arguments that aren't subclasses of :class:`~.Expr` in core
+       operators (:class:`~.Mul`, :class:`~.Add`, and :class:`~.Pow`) is
+       deprecated. See :ref:`non-expr-args-deprecated` for details.
+
+    Every argument of ``Add()`` must be ``Expr``. Infix operator ``+``
+    on most scalar objects in SymPy calls this class.
+
+    Another use of ``Add()`` is to represent the structure of abstract
+    addition so that its arguments can be substituted to return different
+    class. Refer to examples section for this.
+
+    ``Add()`` evaluates the argument unless ``evaluate=False`` is passed.
+    The evaluation logic includes:
+
+    1. Flattening
+        ``Add(x, Add(y, z))`` -> ``Add(x, y, z)``
+
+    2. Identity removing
+        ``Add(x, 0, y)`` -> ``Add(x, y)``
+
+    3. Coefficient collecting by ``.as_coeff_Mul()``
+        ``Add(x, 2*x)`` -> ``Mul(3, x)``
+
+    4. Term sorting
+        ``Add(y, x, 2)`` -> ``Add(2, x, y)``
+
+    If no argument is passed, identity element 0 is returned. If single
+    element is passed, that element is returned.
+
+    Note that ``Add(*args)`` is more efficient than ``sum(args)`` because
+    it flattens the arguments. ``sum(a, b, c, ...)`` recursively adds the
+    arguments as ``a + (b + (c + ...))``, which has quadratic complexity.
+    On the other hand, ``Add(a, b, c, d)`` does not assume nested
+    structure, making the complexity linear.
+
+    Since addition is group operation, every argument should have the
+    same :obj:`sympy.core.kind.Kind()`.
+
+    Examples
+    ========
+
+    >>> from sympy import Add, I
+    >>> from sympy.abc import x, y
+    >>> Add(x, 1)
+    x + 1
+    >>> Add(x, x)
+    2*x
+    >>> 2*x**2 + 3*x + I*y + 2*y + 2*x/5 + 1.0*y + 1
+    2*x**2 + 17*x/5 + 3.0*y + I*y + 1
+
+    If ``evaluate=False`` is passed, result is not evaluated.
+
+    >>> Add(1, 2, evaluate=False)
+    1 + 2
+    >>> Add(x, x, evaluate=False)
+    x + x
+
+    ``Add()`` also represents the general structure of addition operation.
+
+    >>> from sympy import MatrixSymbol
+    >>> A,B = MatrixSymbol('A', 2,2), MatrixSymbol('B', 2,2)
+    >>> expr = Add(x,y).subs({x:A, y:B})
+    >>> expr
+    A + B
+    >>> type(expr)
+    <class 'sympy.matrices.expressions.matadd.MatAdd'>
+
+    Note that the printers do not display in args order.
+
+    >>> Add(x, 1)
+    x + 1
+    >>> Add(x, 1).args
+    (1, x)
+
+    See Also
+    ========
+
+    MatAdd
+
+    """
+
+    __slots__ = ()
+
+    args: tTuple[Expr, ...]
+
+    is_Add = False
+
+    _args_type = Expr
+
+    @property
+    def identity(self):
+        return [0]
+
+
+    def _eval_is_zero(self):
+        if self.is_commutative is False:
+            # issue 10528: there is no way to know if a nc symbol
+            # is zero or not
+            return
+        nz = []
+        z = 0
+        im_or_z = False
+        im = 0
+        for a in self.args:
+            if a.is_extended_real:
+                if a.is_zero:
+                    z += 1
+                elif a.is_zero is False:
+                    nz.append(a)
+                else:
+                    return
+            elif a.is_imaginary:
+                im += 1
+            elif a.is_Mul and S.ImaginaryUnit in a.args:
+                coeff, ai = a.as_coeff_mul(S.ImaginaryUnit)
+                if ai == (S.ImaginaryUnit,) and coeff.is_extended_real:
+                    im_or_z = True
+                else:
+                    return
+            else:
+                return
+        if z == len(self.args):
+            return True
+        if len(nz) in [0, len(self.args)]:
+            return None
+        b = self.func(*nz)
+        if b.is_zero:
+            if not im_or_z:
+                if im == 0:
+                    return True
+                elif im == 1:
+                    return False
+        if b.is_zero is False:
+            return False
+
+    def __neg__(self):
+        return self
+
 add = AssocOpDispatcher('add')
+pm = AssocOpDispatcher('pm')
 
 from .mul import Mul, _keep_coeff, _unevaluated_Mul
 from .numbers import Rational

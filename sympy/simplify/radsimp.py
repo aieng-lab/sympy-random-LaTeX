@@ -1126,6 +1126,8 @@ def fraction(expr, exact=False):
             if term.p != 1:
                 numer.append(term.p)
             denom.append(term.q)
+        elif isinstance(term, Pow) and term.args[1] is S.NegativeOne:
+            denom.append(term.args[0])
         else:
             numer.append(term)
     return Mul(*numer, evaluate=not exact), Mul(*denom, evaluate=not exact)

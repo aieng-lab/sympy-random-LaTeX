@@ -1,7 +1,6 @@
 """Implementation of :class:`FiniteField` class. """
 
 
-from sympy.core.numbers import int_valued
 from sympy.polys.domains.field import Field
 
 from sympy.polys.domains.modularinteger import ModularIntegerFactory
@@ -125,7 +124,6 @@ class FiniteField(Field, SimpleDomain):
         self.one = self.dtype(1)
         self.dom = dom
         self.mod = mod
-        self.sym = symmetric
 
     def __str__(self):
         return 'GF(%s)' % self.mod
@@ -148,23 +146,16 @@ class FiniteField(Field, SimpleDomain):
 
     def to_sympy(self, a):
         """Convert ``a`` to a SymPy object. """
-        return SymPyInteger(self.to_int(a))
+        return SymPyInteger(int(a))
 
     def from_sympy(self, a):
         """Convert SymPy's Integer to SymPy's ``Integer``. """
         if a.is_Integer:
             return self.dtype(self.dom.dtype(int(a)))
-        elif int_valued(a):
+        elif a.is_Float and int(a) == a:
             return self.dtype(self.dom.dtype(int(a)))
         else:
             raise CoercionFailed("expected an integer, got %s" % a)
-
-    def to_int(self, a):
-        """Convert ``val`` to a Python ``int`` object. """
-        aval = a.val
-        if self.sym and aval > self.mod // 2:
-            aval -= self.mod
-        return aval
 
     def from_FF(K1, a, K0=None):
         """Convert ``ModularInteger(int)`` to ``dtype``. """

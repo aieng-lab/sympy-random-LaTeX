@@ -162,7 +162,7 @@ def run_test(label, routines, numerical_tests, language, commands, friendly=True
         codegen(routines, language, "codegen", to_files=True)
     else:
         code_gen = get_code_generator(language, "codegen")
-        code_gen.write(routines, "codegen", to_files=True)
+        code_gen.load_and_write(routines, "codegen", to_files=True)
 
     # 3) write a simple main program that links to the generated code, and that
     #    includes the numerical tests

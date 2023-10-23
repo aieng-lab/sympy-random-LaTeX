@@ -105,10 +105,9 @@ class Trace(Expr):
     def doit(self, **hints):
         if hints.get('deep', True):
             arg = self.arg.doit(**hints)
-            result = arg._eval_trace()
-            if result is not None:
-                return result
-            else:
+            try:
+                return arg._eval_trace()
+            except (AttributeError, NotImplementedError):
                 return Trace(arg)
         else:
             # _eval_trace would go too deep here

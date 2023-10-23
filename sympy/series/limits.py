@@ -173,7 +173,7 @@ class Limit(Expr):
     def free_symbols(self):
         e = self.args[0]
         isyms = e.free_symbols
-        isyms.difference_update(self.args[1].free_symbols)
+        isyms.update(self.args[1].free_symbols)
         isyms.update(self.args[2].free_symbols)
         return isyms
 

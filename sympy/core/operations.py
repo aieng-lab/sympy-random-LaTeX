@@ -548,6 +548,10 @@ class LatticeOp(AssocOp):
         else:
             return frozenset([sympify(expr)])
 
+    @staticmethod
+    def _compare_pretty(a, b):
+        return (str(a) > str(b)) - (str(a) < str(b))
+
 
 class AssocOpDispatcher:
     """
@@ -716,3 +720,4 @@ class AssocOpDispatcher:
             docs.append(s)
 
         return '\n\n'.join(docs)
+

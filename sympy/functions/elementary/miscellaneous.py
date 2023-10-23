@@ -290,7 +290,7 @@ def root(arg, n, k=0, evaluate=None):
     ========
 
     sympy.polys.rootoftools.rootof
-    sympy.core.intfunc.integer_nthroot
+    sympy.core.power.integer_nthroot
     sqrt, real_root
 
     References
@@ -351,7 +351,7 @@ def real_root(arg, n=None, evaluate=None):
     ========
 
     sympy.polys.rootoftools.rootof
-    sympy.core.intfunc.integer_nthroot
+    sympy.core.power.integer_nthroot
     root, sqrt
     """
     from sympy.functions.elementary.complexes import Abs, im, sign
@@ -798,6 +798,12 @@ class Max(MinMaxBase, Application):
         return fuzzy_and(a.is_negative for a in self.args)
 
 
+class Sup(MinMaxBase, Application):
+    pass
+
+class Inf(MinMaxBase, Application):
+    pass
+
 class Min(MinMaxBase, Application):
     """
     Return, if possible, the minimum value of the list.
@@ -913,3 +919,7 @@ class Rem(Function):
         if q.is_Number:
             if p.is_Number:
                 return p - Integer(p/q)*q
+
+class Norm(Expr):
+
+    pass

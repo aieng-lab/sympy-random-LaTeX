@@ -841,7 +841,7 @@ class CodeGen:
             code_lines = ''.join(self._get_header() + [code_lines])
 
         if code_lines:
-            f.write(code_lines)
+            f.load_and_write(code_lines)
 
 
 class CodeGenError(Exception):
@@ -1293,7 +1293,7 @@ class FCodeGen(CodeGen):
         # declaration of the function prototypes
         for routine in routines:
             prototype = self.get_interface(routine)
-            f.write(prototype)
+            f.load_and_write(prototype)
         if empty:
             print(file=f)
     dump_h.extension = interface_extension  # type: ignore
@@ -1739,7 +1739,7 @@ class OctaveCodeGen(CodeGen):
         code_lines = self._indent_code(''.join(code_lines))
 
         if code_lines:
-            f.write(code_lines)
+            f.load_and_write(code_lines)
 
     dump_m.extension = code_extension  # type: ignore
     dump_m.__doc__ = CodeGen.dump_code.__doc__

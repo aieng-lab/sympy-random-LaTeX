@@ -1,6 +1,10 @@
+<<<<<<< Updated upstream
 from sympy.core.intfunc import mod_inverse
 from sympy.polys.matrices.exceptions import DMNonInvertibleMatrixError
 from sympy.polys.domains import EX
+=======
+from sympy.core.numbers import mod_inverse
+>>>>>>> Stashed changes
 
 from .common import MatrixError, NonSquareMatrixError, NonInvertibleMatrixError
 from .utilities import _iszero

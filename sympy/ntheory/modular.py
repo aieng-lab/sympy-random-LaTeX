@@ -1,6 +1,11 @@
 from math import prod
 
+<<<<<<< Updated upstream
 from sympy.external.gmpy import gcd, gcdext
+=======
+from sympy.core.numbers import igcdex
+from sympy.external.gmpy import gcd
+>>>>>>> Stashed changes
 from sympy.ntheory.primetest import isprime
 from sympy.polys.domains import ZZ
 from sympy.polys.galoistools import gf_crt, gf_crt1, gf_crt2
@@ -95,8 +100,8 @@ def crt(m, v, symmetric=False, check=True):
             result, mm = result
 
     if symmetric:
-        return int(symmetric_residue(result, mm)), int(mm)
-    return int(result), int(mm)
+        return symmetric_residue(result, mm), mm
+    return result, mm
 
 
 def crt1(m):
@@ -165,8 +170,8 @@ def crt2(m, v, mm, e, s, symmetric=False):
     result = gf_crt2(v, m, mm, e, s, ZZ)
 
     if symmetric:
-        return int(symmetric_residue(result, mm)), int(mm)
-    return int(result), int(mm)
+        return symmetric_residue(result, mm), mm
+    return result, mm
 
 
 def solve_congruence(*remainder_modulus_pairs, **hint):

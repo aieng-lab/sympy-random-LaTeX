@@ -1187,7 +1187,7 @@ class PermutationGroup(Basic):
         See Also
         ========
 
-        sympy.combinatorics.util._strip
+        sympy.combinatorics.tools._strip
 
         """
         if isinstance(g, (Cycle, Permutation)):

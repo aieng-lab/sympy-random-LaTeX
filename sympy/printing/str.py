@@ -5,16 +5,21 @@ A Printer for generating readable representation of most SymPy classes.
 from __future__ import annotations
 from typing import Any
 
+import sympy
+
 from sympy.core import S, Rational, Pow, Basic, Mul, Number
 from sympy.core.mul import _keep_coeff
 from sympy.core.numbers import Integer
 from sympy.core.relational import Relational
 from sympy.core.sorting import default_sort_key
+from sympy.core.sympify import SympifyError
 from sympy.utilities.iterables import sift
 from .precedence import precedence, PRECEDENCE
 from .printer import Printer, print_function
 
 from mpmath.libmp import prec_to_dps, to_str as mlib_to_str
+
+from .. import Add
 
 
 class StrPrinter(Printer):
@@ -108,8 +113,14 @@ class StrPrinter(Printer):
     def _print_Catalan(self, expr):
         return 'Catalan'
 
+    def _print_Dots(self, expr):
+        return '...'
+
     def _print_ComplexInfinity(self, expr):
         return 'zoo'
+
+    def _print_Percentage(self, expr):
+        return "%s%%" % self._print(expr.args[0])
 
     def _print_ConditionSet(self, s):
         args = tuple([self._print(i) for i in (s.sym, s.condition)])
@@ -156,6 +167,14 @@ class StrPrinter(Printer):
 
     def _print_ExprCondPair(self, expr):
         return '(%s, %s)' % (self._print(expr.expr), self._print(expr.cond))
+
+    def _get_derivative_sup(self, expr): # todo delete?
+        derivative = expr.derivative
+        if isinstance(derivative, int) and 0 < derivative < 4:
+            return "'" * derivative
+        elif derivative == 0:
+            return ''
+        return "^{(%s)}" % expr.derivative
 
     def _print_Function(self, expr):
         return expr.func.__name__ + "(%s)" % self.stringify(expr.args, ", ")
@@ -419,6 +438,10 @@ class StrPrinter(Printer):
 
     def _print_Cycle(self, expr):
         return expr.__str__()
+
+    def _print_Expectation(self, expr):
+        return r"\operatorname{{E}}\left[{}\right]".format(self._print(expr.args[0]))
+
 
     def _print_Permutation(self, expr):
         from sympy.combinatorics.permutations import Permutation, Cycle
@@ -833,6 +856,23 @@ class StrPrinter(Printer):
             return "frozenset()"
         return "frozenset(%s)" % self._print_set(s)
 
+    def _print_ExprWithOtherLimits(self, expr):
+        if len(expr.args) == 2:
+            tex = r'\sum_{%s}' % self._print(expr.args[1])
+        elif len(expr.args) == 3:
+            if isinstance(expr.args[1], sympy.core.symbol.Str):
+                tex = r'\sum_{%s %s}' % (self._print(expr.args[1]), self._print(expr.args[2]))
+            else:
+                tex = r'\sum_{%s=%s}' % (self._print(expr.args[1]), self._print(expr.args[2]))
+        else:
+            raise ValueError
+
+        if isinstance(expr.args[0], Add):
+            tex += self._add_parens(self._print(expr.args[0]))
+        else:
+            tex += self._print(expr.args[0])
+        return tex
+
     def _print_Sum(self, expr):
         def _xab_tostr(xab):
             if len(xab) == 1:
@@ -911,19 +951,22 @@ class StrPrinter(Printer):
         return self._print_Integer(Integer(0))
 
     def _print_DMP(self, p):
-        cls = p.__class__.__name__
-        rep = self._print(p.to_list())
-        dom = self._print(p.dom)
+        try:
+            if p.ring is not None:
+                # TODO incorporate order
+                return self._print(p.ring.to_sympy(p))
+        except SympifyError:
+            pass
 
-        return "%s(%s, %s)" % (cls, rep, dom)
+        cls = p.__class__.__name__
+        rep = self._print(p.rep)
+        dom = self._print(p.dom)
+        ring = self._print(p.ring)
+
+        return "%s(%s, %s, %s)" % (cls, rep, dom, ring)
 
     def _print_DMF(self, expr):
-        cls = expr.__class__.__name__
-        num = self._print(expr.num)
-        den = self._print(expr.den)
-        dom = self._print(expr.dom)
-
-        return "%s(%s, %s, %s)" % (cls, num, den, dom)
+        return self._print_DMP(expr)
 
     def _print_Object(self, obj):
         return 'Object("%s")' % obj.name

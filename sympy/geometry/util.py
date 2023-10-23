@@ -14,22 +14,19 @@ are_similar
 from collections import deque
 from math import sqrt as _sqrt
 
-from sympy import nsimplify
+
 from .entity import GeometryEntity
 from .exceptions import GeometryError
 from .point import Point, Point2D, Point3D
 from sympy.core.containers import OrderedSet
 from sympy.core.exprtools import factor_terms
 from sympy.core.function import Function, expand_mul
-from sympy.core.numbers import Float
 from sympy.core.sorting import ordered
 from sympy.core.symbol import Symbol
 from sympy.core.singleton import S
 from sympy.polys.polytools import cancel
 from sympy.functions.elementary.miscellaneous import sqrt
 from sympy.utilities.iterables import is_sequence
-
-from mpmath.libmp.libmpf import prec_to_dps
 
 
 def find(x, equation):
@@ -43,7 +40,7 @@ def find(x, equation):
     Examples
     ========
 
-    >>> from sympy.geometry.util import find
+    >>> from sympy.geometry.tools import find
     >>> from sympy import Dummy
     >>> from sympy.abc import x
     >>> find('x', x)
@@ -92,7 +89,7 @@ def are_coplanar(*e):
     ========
 
     >>> from sympy import Point3D, Line3D
-    >>> from sympy.geometry.util import are_coplanar
+    >>> from sympy.geometry.tools import are_coplanar
     >>> a = Line3D(Point3D(5, 0, 0), Point3D(1, -1, 1))
     >>> b = Line3D(Point3D(0, -2, 0), Point3D(3, 1, 1))
     >>> c = Line3D(Point3D(0, -1, 0), Point3D(5, -1, 9))
@@ -223,7 +220,7 @@ def centroid(*args):
     ========
 
     >>> from sympy import Point, Segment, Polygon
-    >>> from sympy.geometry.util import centroid
+    >>> from sympy.geometry.tools import centroid
     >>> p = Polygon((0, 0), (10, 0), (10, 10))
     >>> q = p.translate(0, 20)
     >>> p.centroid, q.centroid
@@ -575,7 +572,7 @@ def idiff(eq, y, x, n=1):
     ========
 
     >>> from sympy.abc import x, y, a
-    >>> from sympy.geometry.util import idiff
+    >>> from sympy.geometry.tools import idiff
 
     >>> circ = x**2 + y**2 - 4
     >>> idiff(circ, y, x)
@@ -697,18 +694,11 @@ def intersection(*entities, pairwise=False, **kwargs):
     if len(entities) <= 1:
         return []
 
+    # entities may be an immutable tuple
     entities = list(entities)
-    prec = None
     for i, e in enumerate(entities):
         if not isinstance(e, GeometryEntity):
-            # entities may be an immutable tuple
-            e = Point(e)
-        # convert to exact Rationals
-        d = {}
-        for f in e.atoms(Float):
-            prec = f._prec if prec is None else min(f._prec, prec)
-            d.setdefault(f, nsimplify(f, rational=True))
-        entities[i] = e.xreplace(d)
+            entities[i] = Point(e)
 
     if not pairwise:
         # find the intersection common to all objects
@@ -718,16 +708,11 @@ def intersection(*entities, pairwise=False, **kwargs):
             for x in res:
                 newres.extend(x.intersection(entity))
             res = newres
-    else:
-        # find all pairwise intersections
-        ans = []
-        for j in range(len(entities)):
-            for k in range(j + 1, len(entities)):
-                ans.extend(intersection(entities[j], entities[k]))
-        res = list(ordered(set(ans)))
+        return res
 
-    # convert back to Floats
-    if prec is not None:
-        p = prec_to_dps(prec)
-        res = [i.n(p) for i in res]
-    return res
+    # find all pairwise intersections
+    ans = []
+    for j in range(len(entities)):
+        for k in range(j + 1, len(entities)):
+            ans.extend(intersection(entities[j], entities[k]))
+    return list(ordered(set(ans)))

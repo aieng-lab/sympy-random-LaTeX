@@ -431,7 +431,7 @@ def pyx2obj(pyxpath, objpath=None, destdir=None, cwd=None,
     cy_kwargs: dict (optional)
         Keyword arguments passed onto `simple_cythonize`
     cplus: bool (optional)
-        Indicate whether C++ is used. default: auto-detect using ``.util.pyx_is_cplus``.
+        Indicate whether C++ is used. default: auto-detect using ``.tools.pyx_is_cplus``.
     compile_kwargs: dict
         keyword arguments passed onto src2obj
 

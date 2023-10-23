@@ -49,6 +49,9 @@ class Str(Atom):
     def _hashable_content(self):
         return (self.name,)
 
+    def _eval_subs(self, old, new):
+        return self
+
 
 def _filter_assumptions(kwargs):
     """Split the given dict into assumptions and non-assumptions.
@@ -259,9 +262,7 @@ class Symbol(AtomicExpr, Boolean):
         # be strict about commutativity: cannot be None
         is_commutative = fuzzy_bool(assumptions.get('commutative', True))
         if is_commutative is None:
-            whose = '%s ' % obj.__name__ if obj else ''
-            raise ValueError(
-                '%scommutativity must be True or False.' % whose)
+            is_commutative = False
 
         # sanitize other assumptions so 1 -> True and 0 -> False
         for key in list(assumptions.keys()):
@@ -354,6 +355,9 @@ class Symbol(AtomicExpr, Boolean):
     # Pickles created in previous SymPy versions will still need __setstate__
     # so that they can be unpickled in SymPy > v1.9.
 
+    def contains(self, item):
+        return item == self
+
     def __setstate__(self, state):
         for name, value in state.items():
             setattr(self, name, value)
@@ -403,6 +407,8 @@ class Symbol(AtomicExpr, Boolean):
 
     def as_set(self):
         return S.UniversalSet
+
+
 
 
 class Dummy(Symbol):

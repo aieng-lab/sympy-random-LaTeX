@@ -1,6 +1,5 @@
 """Core module. Provides the basic operations needed in sympy.
 """
-
 from .sympify import sympify, SympifyError
 from .cache import cacheit
 from .assumptions import assumptions, check_assumptions, failing_assumptions, common_assumptions
@@ -10,13 +9,13 @@ from .expr import Expr, AtomicExpr, UnevaluatedExpr
 from .symbol import Symbol, Wild, Dummy, symbols, var
 from .numbers import Number, Float, Rational, Integer, NumberSymbol, \
     RealNumber, igcd, ilcm, seterr, E, I, nan, oo, pi, zoo, \
-    AlgebraicNumber, comp, mod_inverse
-from .power import Pow
-from .intfunc import integer_nthroot, integer_log, num_digits, trailing
+    AlgebraicNumber, comp, mod_inverse, Percentage
+from .power import Pow, integer_nthroot, integer_log
 from .mul import Mul, prod
 from .add import Add
 from .mod import Mod
-from .relational import ( Rel, Eq, Ne, Lt, Le, Gt, Ge,
+from .modifier import Modifier
+from .relational import ( Rel, Eq, Ne, Lt, Le, Gt, Ge, Approx,
     Equality, GreaterThan, LessThan, Unequality, StrictGreaterThan,
     StrictLessThan )
 from .multidimensional import vectorize
@@ -32,6 +31,8 @@ from .parameters import evaluate
 from .kind import UndefinedKind, NumberKind, BooleanKind
 from .traversal import preorder_traversal, bottom_up, use, postorder_traversal
 from .sorting import default_sort_key, ordered
+from .matrix import BasicMatrix, BasicVector
+from .text import Text, String
 
 # expose singletons
 Catalan = S.Catalan
@@ -51,17 +52,17 @@ __all__ = [
 
     'S',
 
+    'Modifier',
+
     'Expr', 'AtomicExpr', 'UnevaluatedExpr',
 
     'Symbol', 'Wild', 'Dummy', 'symbols', 'var',
 
     'Number', 'Float', 'Rational', 'Integer', 'NumberSymbol', 'RealNumber',
     'igcd', 'ilcm', 'seterr', 'E', 'I', 'nan', 'oo', 'pi', 'zoo',
-    'AlgebraicNumber', 'comp', 'mod_inverse',
+    'AlgebraicNumber', 'comp', 'mod_inverse', 'Percentage', 'Text', 'String',
 
-    'Pow',
-
-    'integer_nthroot', 'integer_log', 'num_digits', 'trailing',
+    'Pow', 'integer_nthroot', 'integer_log',
 
     'Mul', 'prod',
 
@@ -69,7 +70,7 @@ __all__ = [
 
     'Mod',
 
-    'Rel', 'Eq', 'Ne', 'Lt', 'Le', 'Gt', 'Ge', 'Equality', 'GreaterThan',
+    'Rel', 'Eq', 'Ne', 'Lt', 'Le', 'Gt', 'Ge', 'Equality', 'Approx', 'GreaterThan',
     'LessThan', 'Unequality', 'StrictGreaterThan', 'StrictLessThan',
 
     'vectorize',
@@ -90,6 +91,9 @@ __all__ = [
 
     'evaluate',
 
+    'BasicMatrix',
+    'BasicVector'
+
     'Catalan',
     'EulerGamma',
     'GoldenRatio',
@@ -101,3 +105,6 @@ __all__ = [
 
     'default_sort_key', 'ordered',
 ]
+
+class BinaryOperator(Expr):
+    pass

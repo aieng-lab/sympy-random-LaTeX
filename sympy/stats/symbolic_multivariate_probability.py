@@ -113,6 +113,8 @@ class ExpectationMatrix(Expectation, MatrixExpr):
 
         return self
 
+
+
 class VarianceMatrix(Variance, MatrixExpr):
     """
     Variance of a random matrix probability expression. Also known as

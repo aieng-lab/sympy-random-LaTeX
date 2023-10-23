@@ -377,7 +377,7 @@ def preview(expr, output='png', viewer=None, euler=True, packages=(),
             shutil.move(join(workdir, src), filename)
         elif viewer == "BytesIO":
             with open(join(workdir, src), 'rb') as fh:
-                outputbuffer.write(fh.read())
+                outputbuffer.load_and_write(fh.read())
         elif callable(viewer):
             viewer(join(workdir, src), fmt=output)
         else:

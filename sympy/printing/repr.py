@@ -318,9 +318,13 @@ class ReprPrinter(Printer):
 
     def _print_DMP(self, p):
         cls = p.__class__.__name__
-        rep = self._print(p.to_list())
+        rep = self._print(p.rep)
         dom = self._print(p.dom)
-        return "%s(%s, %s)" % (cls, rep, dom)
+        if p.ring is not None:
+            ringstr = ", ring=" + self._print(p.ring)
+        else:
+            ringstr = ""
+        return "%s(%s, %s%s)" % (cls, rep, dom, ringstr)
 
     def _print_MonogenicFiniteExtension(self, ext):
         # The expanded tree shown by srepr(ext.modulus)

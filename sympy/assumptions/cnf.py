@@ -54,7 +54,10 @@ class Literal:
         if callable(self.lit):
             lit = self.lit(expr)
         else:
-            lit = self.lit.apply(expr)
+            try:
+                lit = self.lit.apply(expr)
+            except AttributeError:
+                lit = self.lit.rcall(expr)
         return type(self)(lit, self.is_Not)
 
     def __invert__(self):

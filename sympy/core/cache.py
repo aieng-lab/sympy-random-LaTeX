@@ -125,7 +125,7 @@ def _getenv(key, default=None):
     return getenv(key, default)
 
 # SYMPY_USE_CACHE=yes/no/debug
-USE_CACHE = _getenv('SYMPY_USE_CACHE', 'yes').lower()
+USE_CACHE = _getenv('SYMPY_USE_CACHE', 'no').lower()
 # SYMPY_CACHE_SIZE=some_integer/None
 # special cases :
 #  SYMPY_CACHE_SIZE=0    -> No caching

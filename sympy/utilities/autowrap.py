@@ -6,7 +6,7 @@ python.
    >>> from sympy.utilities.autowrap import autowrap
 
 This module provides a common interface for different external backends, such
-as f2py, fwrap, Cython, SWIG(?) etc. (Currently only f2py and Cython are
+as f2py, _fwrap, Cython, SWIG(?) etc. (Currently only f2py and Cython are
 implemented) The goal is to provide access to compiled binaries of acceptable
 performance with a one-button user interface, e.g.,
 
@@ -142,7 +142,7 @@ class CodeWrapper:
 
     def _generate_code(self, main_routine, routines):
         routines.append(main_routine)
-        self.generator.write(
+        self.generator.load_and_write(
             routines, self.filename, True, self.include_header,
             self.include_empty)
 
@@ -413,9 +413,9 @@ setup(ext_modules=cythonize(ext_mods, **cy_opts))
         # Write text to file
         if self._need_numpy:
             # Only import numpy if required
-            f.write(self.pyx_imports)
-        f.write('\n'.join(headers))
-        f.write('\n'.join(functions))
+            f.load_and_write(self.pyx_imports)
+        f.load_and_write('\n'.join(headers))
+        f.load_and_write('\n'.join(functions))
 
     def _partition_args(self, args):
         """Group function arguments into categories."""
@@ -851,7 +851,7 @@ class UfuncifyCodeWrapper(CodeWrapper):
 
     def _generate_code(self, main_routines, helper_routines):
         all_routines = main_routines + helper_routines
-        self.generator.write(
+        self.generator.load_and_write(
             all_routines, self.filename, True, self.include_header,
             self.include_empty)
 
@@ -873,7 +873,7 @@ class UfuncifyCodeWrapper(CodeWrapper):
     def dump_setup(self, f):
         setup = _ufunc_setup.substitute(module=self.module_name,
                                         filename=self.filename)
-        f.write(setup)
+        f.load_and_write(setup)
 
     def dump_c(self, routines, f, prefix, funcname=None):
         """Write a C file with Python wrappers
@@ -973,7 +973,7 @@ class UfuncifyCodeWrapper(CodeWrapper):
                                           ufunc_init=ufunc_init,
                                           function_creation=function_creation)
         text = [top, body, bottom]
-        f.write('\n\n'.join(text))
+        f.load_and_write('\n\n'.join(text))
 
     def _partition_args(self, args):
         """Group function arguments into categories."""

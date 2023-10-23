@@ -10,7 +10,6 @@ from sympy.polys.polyerrors import CoercionFailed
 from sympy.polys.domains.domainelement import DomainElement
 
 from sympy.utilities import public
-from sympy.utilities.exceptions import sympy_deprecation_warning
 
 @public
 class ModularInteger(PicklableWithSlots, DomainElement):
@@ -39,19 +38,9 @@ class ModularInteger(PicklableWithSlots, DomainElement):
         return "%s mod %s" % (self.val, self.mod)
 
     def __int__(self):
-        return int(self.val)
+        return int(self.to_int())
 
     def to_int(self):
-
-        sympy_deprecation_warning(
-            """ModularInteger.to_int() is deprecated.
-
-            Use int(a) or K = GF(p) and K.to_int(a) instead of a.to_int().
-            """,
-            deprecated_since_version="1.13",
-            active_deprecations_target="modularinteger-to-int",
-        )
-
         if self.sym:
             if self.val <= self.mod // 2:
                 return self.val

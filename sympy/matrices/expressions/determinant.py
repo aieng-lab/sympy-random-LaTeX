@@ -3,7 +3,6 @@ from sympy.core.expr import Expr
 from sympy.core.singleton import S
 from sympy.core.sympify import sympify
 from sympy.matrices.common import NonSquareMatrixError
-from sympy.matrices.matrices import MatrixBase
 
 
 class Determinant(Expr):
@@ -23,13 +22,14 @@ class Determinant(Expr):
     """
     is_commutative = True
 
-    def __new__(cls, mat):
+    def __new__(cls, mat, check=False):
         mat = sympify(mat)
-        if not mat.is_Matrix:
-            raise TypeError("Input to Determinant, %s, not a matrix" % str(mat))
+        if check:
+            if not mat.is_Matrix:
+                raise TypeError("Input to Determinant, %s, not a matrix" % str(mat))
 
-        if mat.is_square is False:
-            raise NonSquareMatrixError("Det of a non-square matrix")
+            if mat.is_square is False:
+                raise NonSquareMatrixError("Det of a non-square matrix")
 
         return Basic.__new__(cls, mat)
 
@@ -41,17 +41,11 @@ class Determinant(Expr):
     def kind(self):
         return self.arg.kind.element_kind
 
-    def doit(self, **hints):
-        arg = self.arg
-        if hints.get('deep', True):
-            arg = arg.doit(**hints)
-
-        result = arg._eval_determinant()
-        if result is not None:
-            return result
-
-        return self
-
+    def doit(self, expand=False, **hints):
+        try:
+            return self.arg._eval_determinant()
+        except (AttributeError, NotImplementedError):
+            return self
 
 def det(matexpr):
     """ Matrix Determinant
@@ -97,9 +91,9 @@ class Permanent(Expr):
         return self.args[0]
 
     def doit(self, expand=False, **hints):
-        if isinstance(self.arg, MatrixBase):
+        try:
             return self.arg.per()
-        else:
+        except (AttributeError, NotImplementedError):
             return self
 
 def per(matexpr):

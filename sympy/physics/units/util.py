@@ -140,7 +140,7 @@ def quantity_simplify(expr, across_dimensions: bool=False, unit_system=None):
     Examples
     ========
 
-    >>> from sympy.physics.units.util import quantity_simplify
+    >>> from sympy.physics.units.tools import quantity_simplify
     >>> from sympy.physics.units.prefixes import kilo
     >>> from sympy.physics.units import foot, inch, joule, coulomb
     >>> quantity_simplify(kilo*foot*inch)

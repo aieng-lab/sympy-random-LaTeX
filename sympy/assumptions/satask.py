@@ -4,14 +4,12 @@ Module to evaluate the proposition with assumptions using SAT algorithm.
 
 from sympy.core.singleton import S
 from sympy.core.symbol import Symbol
-from sympy.core.kind import NumberKind, UndefinedKind
-from sympy.assumptions.ask_generated import get_all_known_matrix_facts, get_all_known_number_facts
+from sympy.assumptions.ask_generated import get_all_known_facts
 from sympy.assumptions.assume import global_assumptions, AppliedPredicate
 from sympy.assumptions.sathandlers import class_fact_registry
 from sympy.core import oo
 from sympy.logic.inference import satisfiable
 from sympy.assumptions.cnf import CNF, EncodedCNF
-from sympy.matrices.common import MatrixKind
 
 
 def satask(proposition, assumptions=True, context=global_assumptions,
@@ -334,13 +332,7 @@ def get_all_relevant_facts(proposition, assumptions, context,
 
     if use_known_facts:
         known_facts_CNF = CNF()
-
-        if any(expr.kind == MatrixKind(NumberKind) for expr in all_exprs):
-            known_facts_CNF.add_clauses(get_all_known_matrix_facts())
-        # check for undefinedKind since kind system isn't fully implemented
-        if any(((expr.kind == NumberKind) or (expr.kind == UndefinedKind)) for expr in all_exprs):
-            known_facts_CNF.add_clauses(get_all_known_number_facts())
-
+        known_facts_CNF.add_clauses(get_all_known_facts())
         kf_encoded = EncodedCNF()
         kf_encoded.from_cnf(known_facts_CNF)
 

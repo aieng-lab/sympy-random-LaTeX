@@ -6,7 +6,6 @@ from sympy.polys.domains.groundtypes import (
     factorial as gmpy_factorial,
     gmpy_gcdex, gmpy_gcd, gmpy_lcm, sqrt as gmpy_sqrt,
 )
-from sympy.core.numbers import int_valued
 from sympy.polys.domains.integerring import IntegerRing
 from sympy.polys.polyerrors import CoercionFailed
 from sympy.utilities import public
@@ -36,14 +35,14 @@ class GMPYIntegerRing(IntegerRing):
         """Convert SymPy's Integer to ``dtype``. """
         if a.is_Integer:
             return GMPYInteger(a.p)
-        elif int_valued(a):
+        elif a.is_Float and int(a) == a:
             return GMPYInteger(int(a))
         else:
             raise CoercionFailed("expected an integer, got %s" % a)
 
     def from_FF_python(K1, a, K0):
         """Convert ``ModularInteger(int)`` to GMPY's ``mpz``. """
-        return K0.to_int(a)
+        return GMPYInteger(a.to_int())
 
     def from_ZZ_python(K1, a, K0):
         """Convert Python's ``int`` to GMPY's ``mpz``. """
@@ -61,7 +60,7 @@ class GMPYIntegerRing(IntegerRing):
 
     def from_FF_gmpy(K1, a, K0):
         """Convert ``ModularInteger(mpz)`` to GMPY's ``mpz``. """
-        return K0.to_int(a)
+        return a.to_int()
 
     def from_ZZ_gmpy(K1, a, K0):
         """Convert GMPY's ``mpz`` to GMPY's ``mpz``. """

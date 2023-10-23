@@ -1,8 +1,7 @@
 """Implementation of :class:`IntegerRing` class. """
 
-from sympy.external.gmpy import MPZ, GROUND_TYPES
+from sympy.external.gmpy import MPZ, HAS_GMPY
 
-from sympy.core.numbers import int_valued
 from sympy.polys.domains.groundtypes import (
     SymPyInteger,
     factorial,
@@ -51,17 +50,6 @@ class IntegerRing(Ring, CharacteristicZero, SimpleDomain):
     def __init__(self):
         """Allow instantiation of this domain. """
 
-    def __eq__(self, other):
-        """Returns ``True`` if two domains are equivalent. """
-        if isinstance(other, IntegerRing):
-            return True
-        else:
-            return NotImplemented
-
-    def __hash__(self):
-        """Compute a hash value for this domain. """
-        return hash('ZZ')
-
     def to_sympy(self, a):
         """Convert ``a`` to a SymPy object. """
         return SymPyInteger(int(a))
@@ -70,7 +58,7 @@ class IntegerRing(Ring, CharacteristicZero, SimpleDomain):
         """Convert SymPy's Integer to ``dtype``. """
         if a.is_Integer:
             return MPZ(a.p)
-        elif int_valued(a):
+        elif a.is_Float and int(a) == a:
             return MPZ(int(a))
         else:
             raise CoercionFailed("expected an integer, got %s" % a)
@@ -163,15 +151,15 @@ class IntegerRing(Ring, CharacteristicZero, SimpleDomain):
         This function uses ``math.log`` which is based on ``float`` so it will
         fail for large integer arguments.
         """
-        return self.dtype(int(math.log(int(a), b)))
+        return self.dtype(math.log(int(a), b))
 
     def from_FF(K1, a, K0):
         """Convert ``ModularInteger(int)`` to GMPY's ``mpz``. """
-        return MPZ(K0.to_int(a))
+        return MPZ(a.to_int())
 
     def from_FF_python(K1, a, K0):
         """Convert ``ModularInteger(int)`` to GMPY's ``mpz``. """
-        return MPZ(K0.to_int(a))
+        return MPZ(a.to_int())
 
     def from_ZZ(K1, a, K0):
         """Convert Python's ``int`` to GMPY's ``mpz``. """
@@ -193,7 +181,7 @@ class IntegerRing(Ring, CharacteristicZero, SimpleDomain):
 
     def from_FF_gmpy(K1, a, K0):
         """Convert ``ModularInteger(mpz)`` to GMPY's ``mpz``. """
-        return MPZ(K0.to_int(a))
+        return a.to_int()
 
     def from_ZZ_gmpy(K1, a, K0):
         """Convert GMPY's ``mpz`` to GMPY's ``mpz``. """
@@ -209,10 +197,7 @@ class IntegerRing(Ring, CharacteristicZero, SimpleDomain):
         p, q = K0.to_rational(a)
 
         if q == 1:
-            # XXX: If MPZ is flint.fmpz and p is a gmpy2.mpz, then we need
-            # to convert via int because fmpz and mpz do not know about each
-            # other.
-            return MPZ(int(p))
+            return MPZ(p)
 
     def from_GaussianIntegerRing(K1, a, K0):
         if a.y == 0:
@@ -221,8 +206,7 @@ class IntegerRing(Ring, CharacteristicZero, SimpleDomain):
     def gcdex(self, a, b):
         """Compute extended GCD of ``a`` and ``b``. """
         h, s, t = gcdex(a, b)
-        # XXX: This conditional logic should be handled somewhere else.
-        if GROUND_TYPES == 'gmpy':
+        if HAS_GMPY:
             return s, t, h
         else:
             return h, s, t

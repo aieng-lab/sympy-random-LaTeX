@@ -105,6 +105,7 @@ See the appropriate docstrings for a detailed explanation of the output.
 #      - Idx with step determined by function call
 from collections.abc import Iterable
 
+import sympy
 from sympy.core.numbers import Number
 from sympy.core.assumptions import StdFactKB
 from sympy.core import Expr, Tuple, sympify, S
@@ -169,8 +170,10 @@ class Indexed(Expr):
 
         obj = Expr.__new__(cls, base, *args, **kw_args)
 
-        IndexedBase._set_assumptions(obj, base.assumptions0)
-
+        try:
+            IndexedBase._set_assumptions(obj, base.assumptions0)
+        except AttributeError:
+            IndexedBase._set_assumptions(obj, {})
         return obj
 
     def _hashable_content(self):
@@ -358,6 +361,16 @@ class Indexed(Expr):
             active_deprecations_target="deprecated-expr-free-symbols")
 
         return {self}
+
+    def _eval_subs(self, *args):
+        elements = [i.subs(*args) for i in self.args]
+        if len(elements) == 2:
+            base = sympy.IndexedBase(elements[0])
+            return base[elements[1]]
+        elif len(elements) == 1:
+            return sympy.Indexed(elements[0])
+
+        raise ValueError("Unexpected number of args: %s" % elements)
 
 
 class IndexedBase(Expr, NotIterable):

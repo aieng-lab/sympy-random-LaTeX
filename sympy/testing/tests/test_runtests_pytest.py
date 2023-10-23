@@ -92,7 +92,7 @@ class TestUpdateArgsWithPaths:
         'paths, expected_paths',
         [
             (
-                ['/core', '/util'],
+                ['/core', '/tools'],
                 [
                     'doc/src/modules/utilities',
                     'doc/src/reference/public/utilities',

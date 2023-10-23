@@ -1,6 +1,6 @@
 from typing import Tuple as tTuple
 
-from .expr_with_intlimits import ExprWithIntLimits
+from .expr_with_intlimits import ExprWithIntLimits, ExprWithOtherLimits
 from .summations import Sum, summation, _dummy_with_inherited_properties_concrete
 from sympy.core.expr import Expr
 from sympy.core.exprtools import factor_terms
@@ -190,12 +190,16 @@ class Product(ExprWithIntLimits):
     """
 
     __slots__ = ()
+    is_commutative = True
 
     limits: tTuple[tTuple[Symbol, Expr, Expr]]
 
     def __new__(cls, function, *symbols, **assumptions):
-        obj = ExprWithIntLimits.__new__(cls, function, *symbols, **assumptions)
-        return obj
+        if len(symbols) == 3:
+            obj = ExprWithIntLimits.__new__(cls, function, *symbols, **assumptions)
+            return obj
+        else:
+            return ExprWithOtherLimits.__new__(cls, function, *symbols, **assumptions)
 
     def _eval_rewrite_as_Sum(self, *args, **kwargs):
         return exp(Sum(log(self.function), *self.limits))

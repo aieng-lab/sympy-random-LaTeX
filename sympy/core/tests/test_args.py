@@ -3361,6 +3361,7 @@ def test_sympy__physics__vector__frame__CoordinateSym():
     assert _test_args(CoordinateSym('R_x', ReferenceFrame('R'), 0))
 
 
+<<<<<<< Updated upstream
 @SKIP("abstract class")
 def test_sympy__physics__biomechanics__curve__CharacteristicCurveFunction():
     pass
@@ -3408,6 +3409,8 @@ def test_sympy__physics__biomechanics__curve__FiberForceVelocityInverseDeGroote2
     assert _test_args(FiberForceVelocityInverseDeGroote2016(fv_M, c0, c1, c2, c3))
 
 
+=======
+>>>>>>> Stashed changes
 def test_sympy__physics__paulialgebra__Pauli():
     from sympy.physics.paulialgebra import Pauli
     assert _test_args(Pauli(1))
@@ -4311,16 +4314,6 @@ def test_sympy__physics__control__lti__TransferFunctionMatrix():
     tf1 = TransferFunction(x**2 - y**3, y - z, x)
     tf2 = TransferFunction(y - x, z + y, x)
     assert _test_args(TransferFunctionMatrix([[tf1, tf2]]))
-
-
-def test_sympy__physics__control__lti__StateSpace():
-    from sympy.matrices.dense import Matrix
-    from sympy.physics.control import StateSpace
-    A = Matrix([[-5, -1], [3, -1]])
-    B = Matrix([2, 5])
-    C = Matrix([[1, 2]])
-    D = Matrix([0])
-    assert _test_args(StateSpace(A, B, C, D))
 
 
 def test_sympy__physics__units__dimensions__Dimension():

@@ -75,11 +75,6 @@ class AssumptionKeys:
         return IntegerPredicate()
 
     @memoize_property
-    def noninteger(self):
-        from .predicates.sets import NonIntegerPredicate
-        return NonIntegerPredicate()
-
-    @memoize_property
     def rational(self):
         from .handlers.sets import RationalPredicate
         return RationalPredicate()
@@ -354,10 +349,6 @@ def _extract_all_facts(assump, exprs):
                 else:
                     # If any of the literals doesn't have matching expr don't add the whole clause.
                     break
-            else:
-                # If any of the literals aren't unary predicate don't add the whole clause.
-                break
-
         else:
             if args:
                 facts.add(frozenset(args))
@@ -455,8 +446,6 @@ def ask(proposition, assumptions=True, context=global_assumptions):
         be determined.
     """
     from sympy.assumptions.satask import satask
-    from sympy.assumptions.lra_satask import lra_satask
-    from sympy.logic.algorithms.lra_theory import UnhandledInput
 
     proposition = sympify(proposition)
     assumptions = sympify(assumptions)
@@ -504,14 +493,6 @@ def ask(proposition, assumptions=True, context=global_assumptions):
 
     # using satask (still costly)
     res = satask(proposition, assumptions=assumptions, context=context)
-    if res is not None:
-        return res
-
-    try:
-        res = lra_satask(proposition, assumptions=assumptions, context=context)
-    except UnhandledInput:
-        return None
-
     return res
 
 

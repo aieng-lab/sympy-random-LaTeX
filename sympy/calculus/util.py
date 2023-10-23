@@ -42,7 +42,7 @@ def continuous_domain(f, symbol, domain):
     ========
 
     >>> from sympy import Interval, Symbol, S, tan, log, pi, sqrt
-    >>> from sympy.calculus.util import continuous_domain
+    >>> from sympy.calculus.tools import continuous_domain
     >>> x = Symbol('x')
     >>> continuous_domain(1/x, x, S.Reals)
     Union(Interval.open(-oo, 0), Interval.open(0, oo))
@@ -109,7 +109,7 @@ def function_range(f, symbol, domain):
     ========
 
     >>> from sympy import Interval, Symbol, S, exp, log, pi, sqrt, sin, tan
-    >>> from sympy.calculus.util import function_range
+    >>> from sympy.calculus.tools import function_range
     >>> x = Symbol('x')
     >>> function_range(sin(x), x, Interval(0, 2*pi))
     Interval(-1, 1)
@@ -591,7 +591,7 @@ def lcim(numbers):
     Examples
     ========
 
-    >>> from sympy.calculus.util import lcim
+    >>> from sympy.calculus.tools import lcim
     >>> from sympy import S, pi
     >>> lcim([S(1)/2, S(3)/4, S(5)/6])
     15/2

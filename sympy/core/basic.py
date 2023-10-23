@@ -4,10 +4,10 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Mapping
 from itertools import chain, zip_longest
-from functools import cmp_to_key
 
 from .assumptions import _prepare_class_assumptions
 from .cache import cacheit
+from .core import ordering_of_classes
 from .sympify import _sympify, sympify, SympifyError, _external_converter
 from .sorting import ordered
 from .kind import Kind, UndefinedKind
@@ -33,73 +33,7 @@ def as_Basic(expr):
             expr))
 
 
-# Key for sorting commutative args in canonical order
-# by name. This is used for canonical ordering of the
-# args for Add and Mul *if* the names of both classes
-# being compared appear here. Some things in this list
-# are not spelled the same as their name so they do not,
-# in effect, appear here. See Basic.compare.
-ordering_of_classes = [
-    # singleton numbers
-    'Zero', 'One', 'Half', 'Infinity', 'NaN', 'NegativeOne', 'NegativeInfinity',
-    # numbers
-    'Integer', 'Rational', 'Float',
-    # singleton symbols
-    'Exp1', 'Pi', 'ImaginaryUnit',
-    # symbols
-    'Symbol', 'Wild',
-    # arithmetic operations
-    'Pow', 'Mul', 'Add',
-    # function values
-    'Derivative', 'Integral',
-    # defined singleton functions
-    'Abs', 'Sign', 'Sqrt',
-    'Floor', 'Ceiling',
-    'Re', 'Im', 'Arg',
-    'Conjugate',
-    'Exp', 'Log',
-    'Sin', 'Cos', 'Tan', 'Cot', 'ASin', 'ACos', 'ATan', 'ACot',
-    'Sinh', 'Cosh', 'Tanh', 'Coth', 'ASinh', 'ACosh', 'ATanh', 'ACoth',
-    'RisingFactorial', 'FallingFactorial',
-    'factorial', 'binomial',
-    'Gamma', 'LowerGamma', 'UpperGamma', 'PolyGamma',
-    'Erf',
-    # special polynomials
-    'Chebyshev', 'Chebyshev2',
-    # undefined functions
-    'Function', 'WildFunction',
-    # anonymous functions
-    'Lambda',
-    # Landau O symbol
-    'Order',
-    # relational operations
-    'Equality', 'Unequality', 'StrictGreaterThan', 'StrictLessThan',
-    'GreaterThan', 'LessThan',
-]
-
-def _cmp_name(x: type, y: type) -> int:
-    """return -1, 0, 1 if the name of x is before that of y.
-    A string comparison is done if either name does not appear
-    in `ordering_of_classes`. This is the helper for
-    ``Basic.compare``
-
-    Examples
-    ========
-
-    >>> from sympy import cos, tan, sin
-    >>> from sympy.core import basic
-    >>> save = basic.ordering_of_classes
-    >>> basic.ordering_of_classes = ()
-    >>> basic._cmp_name(cos, tan)
-    -1
-    >>> basic.ordering_of_classes = ["tan", "sin", "cos"]
-    >>> basic._cmp_name(cos, tan)
-    1
-    >>> basic._cmp_name(sin, cos)
-    -1
-    >>> basic.ordering_of_classes = save
-
-    """
+def _old_compare(x: type, y: type) -> int:
     # If the other object is not a Basic subclass, then we are not equal to it.
     if not issubclass(y, Basic):
         return -1
@@ -184,7 +118,6 @@ class Basic(Printable):
         # property methods. This method will only be called for subclasses of
         # Basic but not for Basic itself so we call
         # _prepare_class_assumptions(Basic) below the class definition.
-        super().__init_subclass__()
         _prepare_class_assumptions(cls)
 
     # To be overridden with True in the appropriate subclasses
@@ -236,6 +169,34 @@ class Basic(Printable):
 
     def copy(self):
         return self.func(*self.args)
+
+    def __contains__(self, item):
+        if isinstance(item, type):
+            for arg in self.args:
+                if isinstance(arg, item):
+                    return True
+                if hasattr(arg, 'func') and isinstance(arg.func, item):
+                    return True
+        elif isinstance(item, str):
+            for arg in self.args:
+                if item == str(arg):
+                    return True
+        else:
+            for arg in self.args:
+                if item == arg:
+                    return True
+        try:
+
+            for a in self.args:
+                if hasattr(a, '__contains__') and a is not self:
+                    try:
+                        if item in a:
+                            return True
+                    except TypeError:
+                        pass
+        except SympifyError:
+            pass
+        return False
 
     def __getnewargs__(self):
         return self.args
@@ -306,19 +267,11 @@ class Basic(Printable):
 
     def compare(self, other):
         """
-        Return -1, 0, 1 if the object is less than, equal,
-        or greater than other in a canonical sense.
-        Non-Basic are always greater than Basic.
-        If both names of the classes being compared appear
-        in the `ordering_of_classes` then the ordering will
-        depend on the appearance of the names there.
-        If either does not appear in that list, then the
-        comparison is based on the class name.
-        If the names are the same then a comparison is made
-        on the length of the hashable content.
-        Items of the equal-lengthed contents are then
-        successively compared using the same rules. If there
-        is never a difference then 0 is returned.
+        Return -1, 0, 1 if the object is smaller, equal, or greater than other.
+
+        Not in the mathematical sense. If the object is of a different type
+        from the "other" then their classes are ordered according to
+        the sorted_classes list.
 
         Examples
         ========
@@ -338,7 +291,7 @@ class Basic(Printable):
             return 0
         n1 = self.__class__
         n2 = other.__class__
-        c = _cmp_name(n1, n2)
+        c = _old_compare(n1, n2)
         if c:
             return c
         #
@@ -360,13 +313,6 @@ class Basic(Printable):
 
     @staticmethod
     def _compare_pretty(a, b):
-        """return -1, 0, 1 if a is canonically less, equal or
-        greater than b. This is used when 'order=old' is selected
-        for printing. This puts Order last, orders Rationals
-        according to value, puts terms in order wrt the power of
-        the last power appearing in a term. Ties are broken using
-        Basic.compare.
-        """
         from sympy.series.order import Order
         if isinstance(a, Order) and not isinstance(b, Order):
             return 1
@@ -390,7 +336,6 @@ class Basic(Printable):
                     if c != 0:
                         return c
 
-        # break ties
         return Basic.compare(a, b)
 
     @classmethod
@@ -660,7 +605,7 @@ class Basic(Printable):
         Any other method that uses bound variables should implement a
         free_symbols method."""
         empty: set[Basic] = set()
-        return empty.union(*(a.free_symbols for a in self.args))
+        return empty.union(*(a.free_symbols for a in self.args if hasattr(a, 'free_symbols') and a is not self))
 
     @property
     def expr_free_symbols(self):
@@ -739,7 +684,7 @@ class Basic(Printable):
         # watch out for free symbol that are not in bound symbols;
         # those that are in bound symbols are about to get changed
         bound = self.bound_symbols
-        names = {i.name for i in self.free_symbols - set(bound)}
+        names = {i.name for i in self.free_symbols - set(bound) if hasattr(i, 'name')}
         for b in bound:
             d = next(dums)
             if b.is_Symbol:
@@ -898,6 +843,33 @@ class Basic(Printable):
         """
         return self._args
 
+    def set_arg(self, i, new_arg):
+        if isinstance(i, list):
+            if len(i) > 1:
+                self._args[i[0]].set_arg(i[1:], new_arg)
+                return
+            elif len(i) == 0:
+                raise ValueError("Got list of size 0!")
+            else:
+                 i = i[0]
+
+        args = list(self._args)
+        args[i] = new_arg
+        self._args = tuple(args)
+
+    def get_arg(self, indices):
+        if isinstance(indices, int):
+            return self.args[indices]
+        elif isinstance(indices, list):
+            l = len(indices)
+            if l == 0:
+                return self
+            elif l == 1:
+                return self.args[indices[0]]
+            elif l > 1:
+                return self.args[indices[0]].get_arg(indices[1:])
+
+        raise ValueError("Unexpected input %s" % indices)
     @property
     def _sorted_args(self):
         """
@@ -1116,7 +1088,13 @@ class Basic(Printable):
                     break
                 reps[d] = new
             reps[m] = S.One  # get rid of m
-            return rv.xreplace(reps)
+            rv = rv.xreplace(reps)
+
+
+            from sympy import Subs
+            if kwargs.get('check_subs', True):
+                rv = rv.simplify_subs()
+            return rv
         else:
             rv = self
             for old, new in sequence:
@@ -1204,12 +1182,22 @@ class Basic(Printable):
             hit = False
             args = list(self.args)
             for i, arg in enumerate(args):
+                #if hasattr(self, 'func'):
+                    #if arg.func == old:
+                   #     arg = new
+                  #  else:
+                 #       continue
+                #el
                 if not hasattr(arg, '_eval_subs'):
                     continue
-                arg = arg._subs(old, new, **hints)
+                else:
+                    arg = arg._subs(old, new, **hints)
+
                 if not _aresame(arg, args[i]):
                     hit = True
                     args[i] = arg
+
+
             if hit:
                 rv = self.func(*args)
                 hack2 = hints.get('hack2', False)
@@ -1229,12 +1217,15 @@ class Basic(Printable):
                 return rv
             return self
 
+
         if _aresame(self, old):
             return new
 
         rv = self._eval_subs(old, new)
+
         if rv is None:
             rv = fallback(self, old, new)
+
         return rv
 
     def _eval_subs(self, old, new):
@@ -1322,12 +1313,36 @@ class Basic(Printable):
         elif rule:
             args = []
             changed = False
-            for a in self.args:
+            from sympy import Mul
+            for i, a in enumerate(self.args):
+                #from sympy.core.function import UndefinedFunction
+                #if isinstance(a, UndefinedFunction):
+                #    continue
+
                 _xreplace = getattr(a, '_xreplace', None)
                 if _xreplace is not None:
                     a_xr = _xreplace(rule)
-                    args.append(a_xr[0])
+                    if not isinstance(self, Mul) or a_xr[0] != S.One:
+                        args.append(a_xr[0])
                     changed |= a_xr[1]
+                elif isinstance(a, tuple):
+                    new_tuple = []
+                    for aa in a:
+                        _xreplace = getattr(aa, '_xreplace', None)
+                        if _xreplace is not None:
+                            aaa = _xreplace(rule)
+                            changed |= aaa[1]
+                            aaa = aaa[0]
+                        else:
+                            aaa = aa
+
+                        if isinstance(aaa, Mul) and len(aaa.args) == 2 and aaa.args[1] == S.One:
+                            aaa = aaa.args[0]
+
+                        new_tuple.append(aaa)
+                    new_tuple = tuple(new_tuple)
+                    self.set_arg(i, new_tuple)
+                    args.append(new_tuple)
                 else:
                     args.append(a)
             args = tuple(args)
@@ -1935,6 +1950,26 @@ class Basic(Printable):
         from sympy.simplify.simplify import simplify
         return simplify(self, **kwargs)
 
+    def simplify_subs(self):
+        from sympy.core.function import Subs, UndefinedFunction
+        if isinstance(self, Subs):
+            try:
+                subsitution = {k: v for k, v in zip(self.variables, self.point)}
+                substituted_expr = self.expr.subs(subsitution, check_subs=False)
+                return substituted_expr
+            except Exception as e:
+                pass
+        elif hasattr(self, 'args'):
+            for i, arg in enumerate(self.args):
+               # if isinstance(arg, UndefinedFunction):
+                #    continue
+
+                if hasattr(arg, 'simplify_subs'):
+                    new_arg = arg.simplify_subs()
+                    if new_arg != arg:
+                        self.set_arg(i, new_arg)
+        return self
+
     def refine(self, assumption=True):
         """See the refine function in sympy.assumptions"""
         from sympy.assumptions.refine import refine
@@ -2134,79 +2169,6 @@ class Basic(Printable):
     def could_extract_minus_sign(self):
         return False  # see Expr.could_extract_minus_sign
 
-    def is_same(a, b, approx=None):
-        """Return True if a and b are structurally the same, else False.
-        If `approx` is supplied, it will be used to test whether two
-        numbers are the same or not. By default, only numbers of the
-        same type will compare equal, so S.Half != Float(0.5).
-
-        Examples
-        ========
-
-        In SymPy (unlike Python) two numbers do not compare the same if they are
-        not of the same type:
-
-        >>> from sympy import S
-        >>> 2.0 == S(2)
-        False
-        >>> 0.5 == S.Half
-        False
-
-        By supplying a function with which to compare two numbers, such
-        differences can be ignored. e.g. `equal_valued` will return True
-        for decimal numbers having a denominator that is a power of 2,
-        regardless of precision.
-
-        >>> from sympy import Float
-        >>> from sympy.core.numbers import equal_valued
-        >>> (S.Half/4).is_same(Float(0.125, 1), equal_valued)
-        True
-        >>> Float(1, 2).is_same(Float(1, 10), equal_valued)
-        True
-
-        But decimals without a power of 2 denominator will compare
-        as not being the same.
-
-        >>> Float(0.1, 9).is_same(Float(0.1, 10), equal_valued)
-        False
-
-        But arbitrary differences can be ignored by supplying a function
-        to test the equivalence of two numbers:
-
-        >>> import math
-        >>> Float(0.1, 9).is_same(Float(0.1, 10), math.isclose)
-        True
-
-        Other objects might compare the same even though types are not the
-        same. This routine will only return True if two expressions are
-        identical in terms of class types.
-
-        >>> from sympy import eye, Basic
-        >>> eye(1) == S(eye(1))  # mutable vs immutable
-        True
-        >>> Basic.is_same(eye(1), S(eye(1)))
-        False
-
-        """
-        from .numbers import Number
-        from .traversal import postorder_traversal as pot
-        for t in zip_longest(pot(a), pot(b)):
-            if None in t:
-                return False
-            a, b = t
-            if isinstance(a, Number):
-                if not isinstance(b, Number):
-                    return False
-                if approx:
-                    return approx(a, b)
-            if not (a == b and a.__class__ == b.__class__):
-                return False
-        return True
-
-_aresame = Basic.is_same  # for sake of others importing this
-
-# key used by Mul and Add to make canonical args
-_args_sortkey = cmp_to_key(Basic.compare)
 
 # For all Basic subclasses _prepare_class_assumptions is called by
 # Basic.__init_subclass__ but that method is not called for Basic itself so we
@@ -2260,6 +2222,56 @@ class Atom(Basic):
         # to see that this property is not called for Atoms.
         raise AttributeError('Atoms have no args. It might be necessary'
         ' to make a check for Atoms in the calling code.')
+
+
+def _aresame(a, b):
+    """Return True if a and b are structurally the same, else False.
+
+    Examples
+    ========
+
+    In SymPy (as in Python) two numbers compare the same if they
+    have the same underlying base-2 representation even though
+    they may not be the same type:
+
+    >>> from sympy import S
+    >>> 2.0 == S(2)
+    True
+    >>> 0.5 == S.Half
+    True
+
+    This routine was written to provide a query for such cases that
+    would give false when the types do not match:
+
+    >>> from sympy.core.basic import _aresame
+    >>> _aresame(S(2.0), S(2))
+    False
+
+    """
+    from .numbers import Number
+    from .function import AppliedUndef, UndefinedFunction as UndefFunc
+    if isinstance(a, Number) and isinstance(b, Number):
+        return a == b and a.__class__ == b.__class__
+    for i, j in zip_longest(_preorder_traversal(a), _preorder_traversal(b)):
+        if i != j or type(i) != type(j):
+            if ((isinstance(i, UndefFunc) and isinstance(j, UndefFunc)) or
+                (isinstance(i, AppliedUndef) and isinstance(j, AppliedUndef))):
+                if i.class_key() != j.class_key():
+                    return False
+            else:
+                return False
+    return True
+
+
+def _ne(a, b):
+    # use this as a second test after `a != b` if you want to make
+    # sure that things are truly equal, e.g.
+    # a, b = 0.5, S.Half
+    # a !=b or _ne(a, b) -> True
+    from .numbers import Number
+    # 0.5 == S.Half
+    if isinstance(a, Number) and isinstance(b, Number):
+        return a.__class__ != b.__class__
 
 
 def _atomic(e, recursive=False):

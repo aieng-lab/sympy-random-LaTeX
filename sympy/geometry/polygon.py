@@ -366,7 +366,7 @@ class Polygon(GeometrySet):
         See Also
         ========
 
-        sympy.geometry.point.Point, sympy.geometry.util.centroid
+        sympy.geometry.point.Point, sympy.geometry.tools.centroid
 
         Examples
         ========
@@ -673,7 +673,7 @@ class Polygon(GeometrySet):
         See Also
         ========
 
-        sympy.geometry.util.convex_hull
+        sympy.geometry.tools.convex_hull
 
         Examples
         ========

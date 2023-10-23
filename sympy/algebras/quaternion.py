@@ -12,7 +12,6 @@ from sympy.matrices.dense import MutableDenseMatrix as Matrix
 from sympy.core.sympify import sympify, _sympify
 from sympy.core.expr import Expr
 from sympy.core.logic import fuzzy_not, fuzzy_or
-from sympy.utilities.misc import as_int
 
 from mpmath.libmp.libmpf import prec_to_dps
 
@@ -113,10 +112,15 @@ class Quaternion(Expr):
 
         if any(i.is_commutative is False for i in [a, b, c, d]):
             raise ValueError("arguments have to be commutative")
-        obj = super().__new__(cls, a, b, c, d)
-        obj._real_field = real_field
-        obj.set_norm(norm)
-        return obj
+        else:
+            obj = Expr.__new__(cls, a, b, c, d)
+            obj._a = a
+            obj._b = b
+            obj._c = c
+            obj._d = d
+            obj._real_field = real_field
+            obj.set_norm(norm)
+            return obj
 
     def set_norm(self, norm):
         """Sets norm of an already instantiated quaternion.
@@ -156,19 +160,19 @@ class Quaternion(Expr):
 
     @property
     def a(self):
-        return self.args[0]
+        return self._a
 
     @property
     def b(self):
-        return self.args[1]
+        return self._b
 
     @property
     def c(self):
-        return self.args[2]
+        return self._c
 
     @property
     def d(self):
-        return self.args[3]
+        return self._d
 
     @property
     def real_field(self):
@@ -683,7 +687,7 @@ class Quaternion(Expr):
         return self.pow(p)
 
     def __neg__(self):
-        return Quaternion(-self.a, -self.b, -self.c, -self.d)
+        return Quaternion(-self._a, -self._b, -self._c, -self.d)
 
     def __truediv__(self, other):
         return self * sympify(other)**-1
@@ -880,7 +884,7 @@ class Quaternion(Expr):
             q = self
             # trigsimp is used to simplify sin(x)^2 + cos(x)^2 (these terms
             # arise when from_axis_angle is used).
-            return sqrt(trigsimp(q.a**2 + q.b**2 + q.c**2 + q.d**2))
+            self._norm = sqrt(trigsimp(q.a**2 + q.b**2 + q.c**2 + q.d**2))
 
         return self._norm
 
@@ -921,23 +925,24 @@ class Quaternion(Expr):
         668 + (-224)*i + (-336)*j + (-448)*k
 
         """
-        try:
-            q, p = self, as_int(p)
-        except ValueError:
+        p = sympify(p)
+        q = self
+        if p == -1:
+            return q.inverse()
+        res = 1
+
+        if not p.is_Integer:
             return NotImplemented
 
         if p < 0:
             q, p = q.inverse(), -p
 
-        if p == 1:
-            return q
-
-        res = Quaternion(1, 0, 0, 0)
         while p > 0:
-            if p & 1:
-                res *= q
-            q *= q
-            p >>= 1
+            if p % 2 == 1:
+                res = q * res
+
+            p = p//2
+            q = q * q
 
         return res
 
@@ -1001,7 +1006,10 @@ class Quaternion(Expr):
     def _eval_subs(self, *args):
         elements = [i.subs(*args) for i in self.args]
         norm = self._norm
-        norm = norm.subs(*args)
+        try:
+            norm = norm.subs(*args)
+        except AttributeError:
+            pass
         _check_norm(elements, norm)
         return Quaternion(*elements, norm=norm)
 

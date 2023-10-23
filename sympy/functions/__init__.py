@@ -10,7 +10,7 @@ from sympy.functions.combinatorial.factorials import (factorial, factorial2,
 from sympy.functions.combinatorial.numbers import (carmichael, fibonacci, lucas, tribonacci,
         harmonic, bernoulli, bell, euler, catalan, genocchi, andre, partition, motzkin)
 from sympy.functions.elementary.miscellaneous import (sqrt, root, Min, Max,
-        Id, real_root, cbrt, Rem)
+                                                      Id, real_root, cbrt, Rem, Norm)
 from sympy.functions.elementary.complexes import (re, im, sign, Abs,
         conjugate, arg, polar_lift, periodic_argument, unbranched_argument,
         principal_branch, transpose, adjoint, polarify, unpolarify)
@@ -22,7 +22,7 @@ from sympy.functions.elementary.hyperbolic import (sinh, cosh, tanh, coth,
         sech, csch, asinh, acosh, atanh, acoth, asech, acsch)
 from sympy.functions.elementary.integers import floor, ceiling, frac
 from sympy.functions.elementary.piecewise import (Piecewise, piecewise_fold,
-                                                  piecewise_exclusive)
+                                                  piecewise_exclusive, Otherwise)
 from sympy.functions.special.error_functions import (erf, erfc, erfi, erf2,
         erfinv, erfcinv, erf2inv, Ei, expint, E1, li, Li, Si, Ci, Shi, Chi,
         fresnels, fresnelc)
@@ -51,7 +51,7 @@ ln = log
 
 __all__ = [
     'factorial', 'factorial2', 'rf', 'ff', 'binomial', 'RisingFactorial',
-    'FallingFactorial', 'subfactorial',
+    'FallingFactorial', 'subfactorial', 'Norm'
 
     'carmichael', 'fibonacci', 'lucas', 'motzkin', 'tribonacci', 'harmonic',
     'bernoulli', 'bell', 'euler', 'catalan', 'genocchi', 'andre', 'partition',
@@ -72,7 +72,7 @@ __all__ = [
 
     'floor', 'ceiling', 'frac',
 
-    'Piecewise', 'piecewise_fold', 'piecewise_exclusive',
+    'Piecewise', 'piecewise_fold', 'piecewise_exclusive', 'Otherwise'
 
     'erf', 'erfc', 'erfi', 'erf2', 'erfinv', 'erfcinv', 'erf2inv', 'Ei',
     'expint', 'E1', 'li', 'Li', 'Si', 'Ci', 'Shi', 'Chi', 'fresnels',

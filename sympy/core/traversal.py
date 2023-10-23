@@ -27,7 +27,13 @@ def iterargs(expr):
     args = [expr]
     for i in args:
         yield i
-        args.extend(i.args)
+        try:
+            args.extend(i.args)
+        except TypeError:
+            pass  # for cases like f being an arg
+        except AttributeError:
+            x = 3
+            pass
 
 
 def iterfreeargs(expr, _first=True):
@@ -58,7 +64,10 @@ def iterfreeargs(expr, _first=True):
             for i in iterfreeargs(i.as_dummy(), _first=False):
                 if not i.has(*void):
                     yield i
-        args.extend(i.args)
+        try:
+            args.extend(i.args)
+        except TypeError:
+            pass  # for cases like f being an arg
 
 
 class preorder_traversal:
@@ -293,6 +302,9 @@ def postorder_traversal(node, keys=None):
             else:
                 args = ordered(args)
         for arg in args:
+            yield from postorder_traversal(arg, keys)
+    elif hasattr(node, 'args'):
+        for arg in node.args:
             yield from postorder_traversal(arg, keys)
     elif iterable(node):
         for item in node:
