@@ -9,7 +9,7 @@ import sys
 from functools import lru_cache
 
 import sympy
-from tools import remove_suffix
+
 from .containers import Tuple
 from .sympify import (SympifyError, _sympy_converter, sympify, _convert_numpy_types,
               _sympify, _is_numpy_instance)
@@ -604,7 +604,7 @@ class Number(AtomicExpr):
             elif _obj == '-inf':
                 return S.NegativeInfinity
             elif obj.endswith('\\%'):
-                val = sympify(remove_suffix(obj, '\\%'))
+                val = sympify(obj.removesuffix('\\%'))
                 if isinstance(val, Number):
                     return Percentage(val, 0.01, evaluate=False)
 

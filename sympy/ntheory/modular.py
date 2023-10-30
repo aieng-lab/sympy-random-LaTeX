@@ -1,11 +1,7 @@
 from math import prod
 
-<<<<<<< Updated upstream
-from sympy.external.gmpy import gcd, gcdext
-=======
 from sympy.core.numbers import igcdex
 from sympy.external.gmpy import gcd
->>>>>>> Stashed changes
 from sympy.ntheory.primetest import isprime
 from sympy.polys.domains import ZZ
 from sympy.polys.galoistools import gf_crt, gf_crt1, gf_crt2
@@ -241,7 +237,7 @@ def solve_congruence(*remainder_modulus_pairs, **hint):
         g = gcd(a, b, c)
         a, b, c = [i//g for i in [a, b, c]]
         if a != 1:
-            g, inv_a, _ = gcdext(a, c)
+            inv_a, _, g = igcdex(a, c)
             if g != 1:
                 return None
             b *= inv_a

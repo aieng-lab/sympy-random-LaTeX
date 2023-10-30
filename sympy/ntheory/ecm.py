@@ -187,14 +187,6 @@ def _ecm_one_factor(n, B1=10000, B2=100000, max_curve=200):
     B2 : Stage 2 Bound
     max_curve : Maximum number of curves generated
 
-<<<<<<< Updated upstream
-    Returns
-    =======
-
-    integer | None : ``n`` (if it is prime) else a non-trivial divisor of ``n``. ``None`` if not found
-
-=======
->>>>>>> Stashed changes
     References
     ==========
 
@@ -279,6 +271,9 @@ def _ecm_one_factor(n, B1=10000, B2=100000, max_curve=200):
         if g != 1 and g != n:
             return g
 
+    #ECM failed, Increase the bounds
+    raise ValueError("Increase the bounds")
+
 
 def ecm(n, B1=10000, B2=100000, max_curve=200, seed=1234):
     """Performs factorization using Lenstra's Elliptic curve method.
@@ -313,14 +308,9 @@ def ecm(n, B1=10000, B2=100000, max_curve=200, seed=1234):
                 n //= prime
     rgen.seed(seed)
     while(n > 1):
-<<<<<<< Updated upstream
-        factor = _ecm_one_factor(n, B1, B2, max_curve, seed)
-        if factor is None:
-=======
         try:
             factor = _ecm_one_factor(n, B1, B2, max_curve)
         except ValueError:
->>>>>>> Stashed changes
             raise ValueError("Increase the bounds")
         _factors.add(factor)
         n //= factor

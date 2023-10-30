@@ -4,19 +4,16 @@
 import re
 from importlib.metadata import version
 import sympy
-from sympy import IndexedBase, Integer, Symbol, Function, Pow, Mul, S, Add, evaluate, latex, NotAllowedSymbolException
+from sympy import IndexedBase, Integer, Symbol, Function, Pow, Mul, S, evaluate, latex, NotAllowedSymbolException
 from sympy.concrete.expr_with_intlimits import ExprWithOtherLimits
 from sympy.core.function import MultiDerivative, Derivative, SimpleDerivative
 from sympy.external import import_module
-from sympy.parsing.latex.logic import is_logic_formula, LogicFormula
+from sympy.parsing.latex.logic import is_logic_formula, StringFormula
 from sympy.printing.str import StrPrinter
-from sympy.physics.quantum.state import Bra, Ket
-from sympy.parsing.latex.stats import Symbols
 from sympy.parsing.latex.text import LaTeXText
 
 from sympy.parsing.latex.errors import LaTeXParsingError
 from sympy.stats import Expectation, Covariance, Variance
-from tools import timeout, remove_prefix
 
 LaTeXParser = LaTeXLexer = MathErrorListener = None
 
@@ -91,7 +88,7 @@ def parse_latex(sympy):
         return LaTeXText(sympy)
 
     if is_logic_formula(sympy):
-        return LogicFormula(sympy, recurse=parse_latex)
+        return StringFormula(sympy, recurse=parse_latex)
 
 
     #print(sympy)
@@ -122,11 +119,12 @@ def parse_latex(sympy):
         expr = convert_implication(implication)
 
 
-        expr = timeout(100)(lambda: postprocessing(expr, sympy))()
+        expr = postprocessing(expr, sympy)
         if isinstance(expr, Exception):
             raise expr
-    except (LaTeXParsingError, TypeError, TimeoutError, NotAllowedSymbolException) as e: #
-        return LogicFormula(sympy, recurse=parse_latex)
+    except (LaTeXParsingError, TypeError, NotAllowedSymbolException) as e:
+        # try to use StringFormula as backup
+        return StringFormula(sympy, recurse=parse_latex)
 
     return expr
 
@@ -243,8 +241,6 @@ def convert_set(expr):
 
         conditions = convert_formulas(expr.formulas())
         return sympy.ConditionSet(variable, conditions, base_set)
-    #elif expr.LETTER():
-     #   return sympy.Set(expr.LETTER().getText())
     elif expr.SPECIAL_SETS():
         special_set = convert_special_set(expr.SPECIAL_SETS())
         if expr.subexpr():
@@ -351,7 +347,7 @@ def create_symbol(symbol):
         name = symbol.getText()
 
     if name.startswith('\\'):
-        name = remove_prefix(name, '\\')
+        name = name.removeprefix('\\')
         if name in not_allowed_symbols:
             raise sympy.NotAllowedSymbolException("Found not allowed symbol %s" % name)
 
@@ -550,7 +546,7 @@ def _convert_upper_lower(upper, lower):
     if isinstance(upper_first_arg, Symbol) and isinstance(lower_first_arg, Symbol) \
             and str(upper_first_arg) == 'd' and str(lower_first_arg).startswith('d'):
         # something like d/dx
-        wrt = remove_prefix(str(lower_first_arg), 'd', r'\text{d}', r'\mathrm{d}')
+        wrt = str(lower_first_arg).removeprefix('d').removeprefix(r'\text{d}').removeprefix(r'\mathrm{d}')
     else:
         raise AttributeError
 
@@ -569,7 +565,7 @@ def _split_fractions(postfixs):
             if exp.CARET():
                 if i == 0:
                     diff = exp.exp().comp().atom().DIFFERENTIAL()
-                    wrt = remove_prefix(diff.getText(), 'd')
+                    wrt = diff.getText().removeprefix('d')
                     power = convert_atom(postfix.exp().atom())
                     current = [(power, wrt)]
                     did_start = True
@@ -592,7 +588,7 @@ def _split_fractions(postfixs):
                 elif atom.DIFFERENTIAL():
                     diff = atom.DIFFERENTIAL()
                     if i == 0:
-                        wrt = remove_prefix(diff.getText(), 'd', r'\text{d}', r'\mathrm{d}')
+                        wrt = diff.getText().removeprefix('d').removeprefix(r'\text{d}').removeprefix(r'\mathrm{d}')
                         power = 1
                         current = [(power, wrt)]
                         did_start = True
@@ -931,12 +927,6 @@ def convert_atom(atom):
         return convert_frac(atom.frac())
     elif atom.binom():
         return convert_binom(atom.binom())
-    elif atom.bra():
-        val = convert_expr(atom.bra().expr())
-        return Bra(val)
-    elif atom.ket():
-        val = convert_expr(atom.ket().expr())
-        return Ket(val)
     elif atom.bars():
         val = convert_expr(atom.bars().expr())
         if isinstance(val, sympy.core.BasicMatrix):

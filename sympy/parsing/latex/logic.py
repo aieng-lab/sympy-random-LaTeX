@@ -2,10 +2,19 @@ import re
 from copy import deepcopy
 
 import sympy
-from data.formula.settings import randomize_settings
-from sympy import Expr, latex, Dummy
-from tools import remove_suffix, remove_prefix
-from tools.constants import substitutable_variables as known_variables
+from sympy.settings import randomize_settings
+from sympy import latex, Dummy
+
+
+known_variables = frozenset({
+    'a', 'b', 'c', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u',
+    'v', 'w', 'x', 'y', 'z',
+    'A', 'B', 'C', 'D', 'F', 'G', 'H', 'J', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+    r'\alpha', r'\beta', r'\gamma', r'\delta', r'\epsilon', r'\varepsilon', r'\zeta', r'\eta', r'\theta',
+    r'\vartheta', r'\lambda', r'\mu', r'\nu', r'\xi', r'\rho', r'\sigma', r'\tau', r'\phi', r'\varphi',
+    r'\chi', r'\psi', r'\omega',
+})
+
 
 logic_formula_recognizer = [r'\land', r'\lor', r'\neg', r'\exists', r'\forall', r'\lnot', r'\ln', r'\log', r'\not\in', '∧', '∨', r'\colon ', r'\wedge', r'\vee'] # space after \colon is important because of \coloneqq
 latex_commands = logic_formula_recognizer + [r'\mathbb{R', r'\mathbb{N', r'\mathbb{Z', r'\mathbb{C', r'\mathbb{Q', r'\wedge', r'\vee', r'\cdot',
@@ -59,7 +68,7 @@ def remove_text_placeholders(input_string):
 
     return input_string
 
-class LogicFormula:
+class StringFormula:
 
     def __init__(self, text: str, recurse=None):
         if ESCAPE_CHAR_VARIABLES in text or ESCAPE_CHAR_FUNCTIONS in text:
@@ -92,7 +101,7 @@ class LogicFormula:
         for c in latex_commands + symbols:
             text = text.replace(c, len(c) * " ")
 
-        text = remove_suffix(text, '\\')
+        text = text.removesuffix('\\')
 
         variables = set([t for t in text.split(' ') if len(t) > 0])
 
@@ -177,7 +186,7 @@ class LogicFormula:
         for i, x in enumerate(self.text.split(ESCAPE_CHAR_VARIABLES)):
             if i % 2 == 1 and len(x) > 0:
                 if x.startswith('\\'):
-                    x = remove_prefix(x, '\\')
+                    x = x.removeprefix('\\')
                 s.add(self.create_symbol(x))
         return s
 

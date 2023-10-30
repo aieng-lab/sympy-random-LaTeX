@@ -8,17 +8,13 @@ from functools import reduce
 from types import GeneratorType
 
 from sympy.core.expr import Expr
-<<<<<<< Updated upstream
-from sympy.core.intfunc import igcd
-=======
 from sympy.core.numbers import igcd, oo
->>>>>>> Stashed changes
 from sympy.core.symbol import Symbol, symbols as _symbols
 from sympy.core.sympify import CantSympify, sympify
 from sympy.ntheory.multinomial import multinomial_coefficients
 from sympy.polys.compatibility import IPolys
 from sympy.polys.constructor import construct_domain
-from sympy.polys.densebasic import ninf, dmp_to_dict, dmp_from_dict
+from sympy.polys.densebasic import dmp_to_dict, dmp_from_dict
 from sympy.polys.domains.domainelement import DomainElement
 from sympy.polys.domains.polynomialring import PolynomialRing
 from sympy.polys.heuristicgcd import heugcd
@@ -1632,13 +1628,13 @@ class PolyElement(DomainElement, DefaultPrinting, CantSympify, dict):
         """
         The leading degree in ``x`` or the main variable.
 
-        Note that the degree of 0 is negative infinity (``float('-inf')``)
+        Note that the degree of 0 is negative infinity (the SymPy object -oo).
 
         """
         i = f.ring.index(x)
 
         if not f:
-            return ninf
+            return -oo
         elif i < 0:
             return 0
         else:
@@ -1648,11 +1644,11 @@ class PolyElement(DomainElement, DefaultPrinting, CantSympify, dict):
         """
         A tuple containing leading degrees in all variables.
 
-        Note that the degree of 0 is negative infinity (``float('-inf')``)
+        Note that the degree of 0 is negative infinity (the SymPy object -oo)
 
         """
         if not f:
-            return (ninf,)*f.ring.ngens
+            return (-oo,)*f.ring.ngens
         else:
             return tuple(map(max, list(zip(*f.itermonoms()))))
 
@@ -1660,13 +1656,13 @@ class PolyElement(DomainElement, DefaultPrinting, CantSympify, dict):
         """
         The tail degree in ``x`` or the main variable.
 
-        Note that the degree of 0 is negative infinity (``float('-inf')``)
+        Note that the degree of 0 is negative infinity (the SymPy object -oo)
 
         """
         i = f.ring.index(x)
 
         if not f:
-            return ninf
+            return -oo
         elif i < 0:
             return 0
         else:
@@ -1676,11 +1672,11 @@ class PolyElement(DomainElement, DefaultPrinting, CantSympify, dict):
         """
         A tuple containing tail degrees in all variables.
 
-        Note that the degree of 0 is negative infinity (``float('-inf')``)
+        Note that the degree of 0 is negative infinity (the SymPy object -oo)
 
         """
         if not f:
-            return (ninf,)*f.ring.ngens
+            return (-oo,)*f.ring.ngens
         else:
             return tuple(map(min, list(zip(*f.itermonoms()))))
 

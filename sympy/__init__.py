@@ -504,7 +504,9 @@ __all__ = [
     # sympy.testing
     'test', 'doctest',
 
-    'BinaryOperator'
+    'BinaryOperator',
+
+    'util'
 ]
 
 

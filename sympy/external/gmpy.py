@@ -2,34 +2,7 @@ import os
 import sys
 from typing import Tuple as tTuple, Type
 
-<<<<<<< Updated upstream
-from sympy.external import import_module
-
-from .pythonmpq import PythonMPQ
-
-from .ntheory import (
-    bit_scan1 as python_bit_scan1,
-    bit_scan0 as python_bit_scan0,
-    remove as python_remove,
-    factorial as python_factorial,
-    sqrt as python_sqrt,
-    sqrtrem as python_sqrtrem,
-    gcd as python_gcd,
-    lcm as python_lcm,
-    gcdext as python_gcdext,
-    is_square as python_is_square,
-    invert as python_invert,
-    legendre as python_legendre,
-    jacobi as python_jacobi,
-    kronecker as python_kronecker,
-    iroot as python_iroot,
-    is_fermat_prp as python_is_fermat_prp,
-    is_euler_prp as python_is_euler_prp,
-    is_strong_prp as python_is_strong_prp,
-)
-=======
 import mpmath.libmp as mlib
->>>>>>> Stashed changes
 
 from sympy.external import import_module
 
@@ -67,12 +40,8 @@ __all__ = [
 
     # lcm from gmpy or math
     'lcm',
-<<<<<<< Updated upstream
-    'gcdext',
-=======
 
     # invert from gmpy or pow
->>>>>>> Stashed changes
     'invert',
 
     # legendre from gmpy or sympy
@@ -141,67 +110,13 @@ if gmpy is not None:
     sqrtrem = gmpy.isqrt_rem
     gcd = gmpy.gcd
     lcm = gmpy.lcm
-    gcdext = gmpy.gcdext
     invert = gmpy.invert
     legendre = gmpy.legendre
     jacobi = gmpy.jacobi
 
-<<<<<<< Updated upstream
-    HAS_GMPY = 0
-    GROUND_TYPES = 'flint'
-    SYMPY_INTS = (int, flint.fmpz) # type: ignore
-    MPZ = flint.fmpz # type: ignore
-    MPQ = flint.fmpq # type: ignore
-
-    bit_scan1 = python_bit_scan1
-    bit_scan0 = python_bit_scan0
-    remove = python_remove
-    factorial = python_factorial
-
-    def sqrt(x):
-        return flint.fmpz(x).isqrt()
-
-    def is_square(x):
-        if x < 0:
-            return False
-        return flint.fmpz(x).sqrtrem()[1] == 0
-
-    def sqrtrem(x):
-        return flint.fmpz(x).sqrtrem()
-
-    def gcd(*args):
-        return reduce(flint.fmpz.gcd, args, flint.fmpz(0))
-
-    def lcm(*args):
-        return reduce(flint.fmpz.lcm, args, flint.fmpz(1))
-
-    gcdext = python_gcdext
-    invert = python_invert
-    legendre = python_legendre
-
-    def jacobi(x, y):
-        if y <= 0 or not y % 2:
-            raise ValueError("y should be an odd positive integer")
-        return flint.fmpz(x).jacobi(y)
-
-    kronecker = python_kronecker
-
-    def iroot(x, n):
-        if n <= LONG_MAX:
-            y = flint.fmpz(x).root(n)
-            return y, y**n == x
-        return python_iroot(x, n)
-
-    is_fermat_prp = python_is_fermat_prp
-    is_euler_prp = python_is_euler_prp
-    is_strong_prp = python_is_strong_prp
-
-elif GROUND_TYPES == 'python':
-=======
 else:
     from .pythonmpq import PythonMPQ
     import math
->>>>>>> Stashed changes
 
     HAS_GMPY = 0
     GROUND_TYPES = 'python'
@@ -209,26 +124,6 @@ else:
     MPZ = int
     MPQ = PythonMPQ
 
-<<<<<<< Updated upstream
-    bit_scan1 = python_bit_scan1
-    bit_scan0 = python_bit_scan0
-    remove = python_remove
-    factorial = python_factorial
-    sqrt = python_sqrt
-    is_square = python_is_square
-    sqrtrem = python_sqrtrem
-    gcd = python_gcd
-    lcm = python_lcm
-    gcdext = python_gcdext
-    invert = python_invert
-    legendre = python_legendre
-    jacobi = python_jacobi
-    kronecker = python_kronecker
-    iroot = python_iroot
-    is_fermat_prp = python_is_fermat_prp
-    is_euler_prp = python_is_euler_prp
-    is_strong_prp = python_is_strong_prp
-=======
     factorial = lambda x: int(mlib.ifac(x))
     sqrt = lambda x: int(mlib.isqrt(x))
     is_square = lambda x: x >= 0 and mlib.sqrtrem(x)[1] == 0
@@ -271,7 +166,6 @@ else:
         if pow(x, (y - 1) // 2, y) == 1:
             return 1
         return -1
->>>>>>> Stashed changes
 
     def jacobi(x, y):
         """ Return Jacobi symbol (x / y)."""

@@ -1,4 +1,4 @@
-# SymPy
+# SymPy with randomized LaTeX Formula Generator
 
 [![pypi version](https://img.shields.io/pypi/v/sympy.svg)](https://pypi.python.org/pypi/sympy)
 [![Join the chat at https://gitter.im/sympy/sympy](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/sympy/sympy?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
@@ -28,6 +28,75 @@ Our mailing list is at
 We have a community chat at [Gitter](https://gitter.im/sympy/sympy). Feel
 free to ask us anything there. We have a very welcoming and helpful
 community.
+
+
+# Special Features of this fork
+This SymPy repository contains a FormulaGenerator which generates randomized versions of a given formula.
+
+```python
+from sympy.generator import FormulaGenerator
+
+formula = "(a+b)^2 = a^2 + 2ab + b^2"
+generator = FormulaGenerator(formula)
+
+for version, _ in generator.generate_versions_iterator(max=4, only_true_version=True, initial_is_candidate=False):
+    print(version)
+
+>>> e^{\\pi \\cdot i} = -1
+>>> e^{i \\pi} = -1
+>>> e^{\\pi \\cdot \\mathrm{i}} = -1
+>>> -1 = e^{\\pi\\cdot \\mathrm{i}}
+```
+The `FormulaGenerator' takes a LaTeX Formula as input and creates equivalent versions in this example. If variables
+occur in the formula, they are substituted by random variables:
+```python
+formula = "(a+b)^2 = a^2 + 2ab + b^2"
+generator = FormulaGenerator(formula)
+for version, _ in generator.generate_versions_iterator(max=3, only_true_version=True, initial_is_candidate=False):
+    print(version)
+
+
+>>> x^2 + 2*b*x + b * b = (x + b)^2
+>>> b^2 + a^2 + b\\cdot a\\cdot 2 = (a + b)^2
+>>> f^2 + f\\times c\\times 2 + c^2 = (c + f)^2
+```
+To disable the substitutions, use `FormulaGenerator(formula, max_substitution=0)`.
+
+Furthermore, the generator can generate *falsified* versions of the given formula, meaning a similar looking but not
+mathematical equivalent formula.
+
+```python
+formula = r"a^2+b^2=c^2"
+generator = FormulaGenerator(formula)
+for version in generator.generate_versions_iterator(max=10, initial_is_candidate=False):
+    print(version)
+
+>>> ('x^2 = d^2 + f * f', True)
+>>> ('2^c = b^2 + h^2', False)
+>>> ('g^2 = a^2 + d^2', True)
+>>> ('x^2 = d^2 + f * f', True)
+>>> ('2^a = c^2', False)
+```
+The factor of falsified versions per equivalent version can be controlled by `factor_false` argument in `genertate_versions_iterator` (default `=1`).
+
+The randomized printing can be controlled by changing the [randomize_settings](sympy/settings.py) or providing it by `FormulaGenerator(formula, randomize_settings=custom_randomized_settings)`
+```python
+from sympy.util import RandomChoice, RandomDecidedTruthValue
+custom_randomized_settings = {
+    "root_notation": RandomDecidedTruthValue(0.7),
+    "frac": RandomChoice([r"\frac", r"\mycustomfrac"], weights=[2, 10]),
+}
+formula = r"\frac{1}{\sqrt{2}} = \frac{\sqrt{2}}{2}"
+generator = FormulaGenerator(formula, randomize_settings=custom_randomized_settings)
+for version, _ in generator.generate_versions_iterator(max=1, only_true_version=True, initial_is_candidate=False):
+    print(version)
+
+>>> \mycustomfrac{1}{2^{\mycustomfrac{1}{2}}} = \frac{\sqrt{2}}{2}
+```
+
+The examples are provided in [examples/generator.py](examples/generator.py). Due to randomized printing, your results
+may (most likely) be different when running the code. You may need to run `pip install antlr4-python3-runtime==4.12` to enable LaTeX parsing. Additionally, you need to install `frozendict`.
+
 
 ## Download
 

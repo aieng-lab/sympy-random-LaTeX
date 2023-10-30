@@ -1,19 +1,13 @@
 import re
 from copy import deepcopy
 
-from data.formula.settings import randomize_settings
+from sympy.settings import randomize_settings
 from sympy import latex, SympifyError, Basic
 from sympy.parsing.latex import parse_latex
-from sympy.parsing.latex.logic import LogicFormula
-from tools import timeout
+from sympy.parsing.latex.logic import StringFormula
 
 DOLLAR_ESCAPE = '####'
 
-TIMEOUT = 20
-
-def set_timeout(timeout):
-    global TIMEOUT
-    TIMEOUT = timeout
 
 class LaTeXText:
     def __init__(self, text:str):
@@ -28,16 +22,10 @@ class LaTeXText:
 
     def check_init(self):
         if not self.initialized:
-            if __debug__:
-                r = self.init()
-            else:
-                r = timeout(TIMEOUT)(self.init)()
-            if r:
-                raise r
+            self.init()
             self.initialized = True
 
     def init(self):
-        #text = re.sub(r'\$\$(.*?)\$\$', r'\\[\1\\]', self.raw) # replace old displaymode style $$ ...$$ with \[...\]
         text = re.sub(r'\$\$(.*?)\$\$', r'$\1$', self.raw) # replace old displaymode style $$ ...$$ with \[...\]
         if r'\[' in text:
             self.substitutable = False
@@ -61,7 +49,7 @@ class LaTeXText:
         return self.raw.count('$') >= 2 * n
 
     def __contains__(self, item):
-        if isinstance(item, (Basic, LaTeXText, LogicFormula)):
+        if isinstance(item, (Basic, LaTeXText, StringFormula)):
             try:
                 return any(item in f for f in self.formula_iterator())
             except Exception:

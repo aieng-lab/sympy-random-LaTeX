@@ -20,7 +20,7 @@ from sympy.core.sorting import default_sort_key
 from sympy.core.sympify import SympifyError
 from sympy.logic.boolalg import true, BooleanTrue, BooleanFalse
 from sympy.printing.stats import PermutationStats
-from sympy.printing.util import RandomDecidedChoice, RandomDecidedTruthValue, RandomChoice, RandomTruthValue
+
 from sympy.tensor.array import NDimArray
 
 # sympy.printing imports
@@ -31,15 +31,21 @@ from sympy.printing.precedence import precedence, PRECEDENCE
 
 from mpmath.libmp.libmpf import prec_to_dps, to_str as mlib_to_str
 
+from sympy.util import RandomDecidedChoice, RandomDecidedTruthValue, RandomChoice, RandomTruthValue
 from sympy.utilities.iterables import has_variety, sift
+from sympy.settings import randomize_settings
 
 import re
 import random
 
-from tools import remove_suffix, remove_prefix
-
 if TYPE_CHECKING:
     from sympy.vector.basisdependent import BasisDependent
+
+def random_latex(expr, use_default_randomized_settings=True, **settings):
+    if use_default_randomized_settings:
+        settings.update(randomize_settings)
+    return latex(expr, **settings)
+
 
 # Hand-picked functions which can be used directly in both LaTeX and MathJax
 # Complete list at
@@ -640,7 +646,7 @@ class LatexPrinter(Printer):
         str_real = mlib_to_str(expr._mpf_, dps, strip_zeros=strip, min_fixed=low, max_fixed=high)
 
         if str_real.endswith('.0') and self._get_setting('strip_.0'):
-            str_real = remove_suffix(str_real, '.0')
+            str_real = str_real.removesuffix('.0')
 
         # Must always have a mul symbol (as 2.5 10^{20} just looks odd)
         # thus we use the number separator
@@ -699,8 +705,6 @@ class LatexPrinter(Printer):
         return any(c in expr for c in [sympy.core.numbers.Dots])
 
     def _print_Mul(self, expr: Expr):
-        from sympy.physics.units import Quantity
-        from sympy.physics.units.prefixes import Prefix
         from sympy.simplify import fraction
         separator: str = str(self._settings['mul_symbol_latex'])
         numbersep: str = str(self._settings['mul_symbol_latex_numbers'])
@@ -712,7 +716,7 @@ class LatexPrinter(Printer):
                 order = self.order
                 if self._needs_original_order(expr):
                     order = 'original'
-                    
+
                 if order == 'random':
                     args = list(expr.args)
                     random.shuffle(args)
@@ -721,12 +725,8 @@ class LatexPrinter(Printer):
                 else:
                     args = expr.as_ordered_factors()
 
-                # If quantities are present append them at the back
-                units, nonunits = sift(args, lambda x: isinstance(x, (Quantity, Prefix)) or
-                              (isinstance(x, Pow) and
-                               isinstance(x.base, Quantity)), binary=True)
-                prefixes, units = sift(units, lambda x: isinstance(x, Prefix), binary=True)
-                return convert_args(nonunits + prefixes + units)
+
+                return convert_args(args)
 
 
 
@@ -740,39 +740,34 @@ class LatexPrinter(Printer):
 
                 term_tex = self._print(term)
 
-                if not isinstance(term, (Quantity, Prefix)):
-                    if self._needs_mul_brackets(term, first=(i == 0),
-                                                last=(i == len(args) - 1)):
-                        term_tex = self._add_parens(term_tex)
+                if self._needs_mul_brackets(term, first=(i == 0),
+                                            last=(i == len(args) - 1)):
+                    term_tex = self._add_parens(term_tex)
 
-                    if  _between_two_numbers_p[0].search(last_term_tex) and \
-                        _between_two_numbers_p[1].match(str(term)):
-                        # between two numbers
-                        _tex += numbersep
-                    elif term_tex[0].isdigit() and len(_tex) > 0:
-                        # also use the number separator in this case (since this looks better: x*4 instead of x4)
-                        _tex += numbersep
-                    elif _tex:
-                        def ends_with_letter_or_special_pattern(string):
-                            # tests if string ends with a case like x, x^k, x^{n+m}, which requires a non empty seperator
-                            # if next term starts with brackets (otherwise x^k(t) would be interpreted as function x with (x(t))^k)!!
-                            pattern = r"[a-zA-Z]$|[a-zA-Z]\^\{[a-zA-Z0-9+\-*/\\]*\}$|[a-zA-Z]\^[a-zA-Z0-9]$"
-                            return bool(re.search(pattern, string))
+                if  _between_two_numbers_p[0].search(last_term_tex) and \
+                    _between_two_numbers_p[1].match(str(term)):
+                    # between two numbers
+                    _tex += numbersep
+                elif term_tex[0].isdigit() and len(_tex) > 0:
+                    # also use the number separator in this case (since this looks better: x*4 instead of x4)
+                    _tex += numbersep
+                elif _tex:
+                    def ends_with_letter_or_special_pattern(string):
+                        # tests if string ends with a case like x, x^k, x^{n+m}, which requires a non empty seperator
+                        # if next term starts with brackets (otherwise x^k(t) would be interpreted as function x with (x(t))^k)!!
+                        pattern = r"[a-zA-Z]$|[a-zA-Z]\^\{[a-zA-Z0-9+\-*/\\]*\}$|[a-zA-Z]\^[a-zA-Z0-9]$"
+                        return bool(re.search(pattern, string))
 
-                        if (term_tex.startswith('(') or term_tex.startswith(r'\left')) and ends_with_letter_or_special_pattern(last_term_tex):
-                            if len(separator.strip()) == 0:
-                                _tex += numbersep
-                            else:
-                                _tex += separator
-                        elif len(separator) == 0 and len(_tex) > 1:
-                            _tex += " "
+                    if (term_tex.startswith('(') or term_tex.startswith(r'\left')) and ends_with_letter_or_special_pattern(last_term_tex):
+                        if len(separator.strip()) == 0:
+                            _tex += numbersep
                         else:
                             _tex += separator
-                elif _tex:
-                    if len(separator) == 0 and len(last_term_tex) > 1:
+                    elif len(separator) == 0 and len(_tex) > 1:
                         _tex += " "
                     else:
                         _tex += separator
+
 
                 _tex += term_tex
                 last_term_tex = term_tex
@@ -1215,13 +1210,13 @@ class LatexPrinter(Printer):
             # try to write it like f''(x) or f^{(n)}(x)
             tex = None
             if isinstance(pow, sympy.Symbol):
-                tex = '%s^{(%s)}%s' % (fnc_name, self._print(pow), remove_prefix(fnc, fnc_name))
+                tex = '%s^{(%s)}%s' % (fnc_name, self._print(pow), fnc.removeprefix(fnc_name))
             elif isinstance(pow, sympy.Integer):
                 pow_int = int(pow)
                 if pow_int <= self._get_setting('max_prime'):
-                    tex = fnc_name + (pow_int * "'") + remove_prefix(fnc, fnc_name)
+                    tex = fnc_name + (pow_int * "'") + fnc.removeprefix(fnc_name)
                 else:
-                    tex = '%s^{(%s)}%s' % (fnc_name, self._print(pow), remove_prefix(fnc, fnc_name))
+                    tex = '%s^{(%s)}%s' % (fnc_name, self._print(pow), fnc.removeprefix(fnc_name))
 
             if tex:
                 return tex
@@ -1389,7 +1384,7 @@ class LatexPrinter(Printer):
 
     def _print_InverseFunction(self, expr, exp=None) -> str:
         return self._print_Function_(expr.args[0], exp='-1')
-        
+
 
     def _print_Function(self, expr: Function, exp=None) -> str:
         r'''
@@ -2816,7 +2811,7 @@ class LatexPrinter(Printer):
             tex = r"%s^{%s}" % (tex, exp)
         return tex
 
-    def _print_LogicFormula(self, expr):
+    def _print_StringFormula(self, expr):
         return expr.getText()
 
     def _print_tribonacci(self, expr, exp=None):

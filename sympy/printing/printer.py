@@ -222,7 +222,7 @@ from sympy.core.add import Add
 from sympy.core.basic import Basic
 
 from sympy.core.function import AppliedUndef, UndefinedFunction, Function
-from sympy.printing.util import RandomChoice
+from sympy.util import RandomChoice
 
 
 @contextmanager
