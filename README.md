@@ -77,7 +77,7 @@ for version in generator.generate_versions_iterator(max=10, initial_is_candidate
 >>> ('x^2 = d^2 + f * f', True)
 >>> ('2^a = c^2', False)
 ```
-The factor of falsified versions per equivalent version can be controlled by `factor_false` argument in `genertate_versions_iterator` (default `=1`).
+The factor of falsified versions per equivalent version can be controlled by `factor_false` argument in `genertate_versions_iterator` (default `=1`). The falsified versions may be used to generate challenging ML training data, e.g., for an information retrieval model.
 
 The randomized printing can be controlled by changing the [randomize_settings](sympy/settings.py) or providing it by `FormulaGenerator(formula, randomize_settings=custom_randomized_settings)`
 ```python
