@@ -36,7 +36,7 @@ This SymPy repository contains a FormulaGenerator which generates randomized ver
 ```python
 from sympy.generator import FormulaGenerator
 
-formula = "(a+b)^2 = a^2 + 2ab + b^2"
+formula = "-1 = e^{\\pi * i}"
 generator = FormulaGenerator(formula)
 
 for version, _ in generator.generate_versions_iterator(max=4, only_true_version=True, initial_is_candidate=False):
