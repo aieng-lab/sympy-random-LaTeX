@@ -50,11 +50,11 @@ for version, _ in generator.generate_versions_iterator(max=4, only_true_version=
 The `FormulaGenerator' takes a LaTeX Formula as input and creates equivalent versions in this example. If variables
 occur in the formula, they are substituted by random variables:
 ```python
+from sympy.generator import FormulaGenerator
 formula = "(a+b)^2 = a^2 + 2ab + b^2"
 generator = FormulaGenerator(formula)
 for version, _ in generator.generate_versions_iterator(max=3, only_true_version=True, initial_is_candidate=False):
     print(version)
-
 
 >>> x^2 + 2*b*x + b * b = (x + b)^2
 >>> b^2 + a^2 + b\\cdot a\\cdot 2 = (a + b)^2
@@ -66,6 +66,7 @@ Furthermore, the generator can generate *falsified* versions of the given formul
 mathematical equivalent formula.
 
 ```python
+from sympy.generator import FormulaGenerator
 formula = r"a^2+b^2=c^2"
 generator = FormulaGenerator(formula)
 for version in generator.generate_versions_iterator(max=10, initial_is_candidate=False):
@@ -81,21 +82,25 @@ The factor of falsified versions per equivalent version can be controlled by `fa
 
 The randomized printing can be controlled by changing the [randomize_settings](sympy/settings.py) or providing it by `FormulaGenerator(formula, randomize_settings=custom_randomized_settings)`
 ```python
+from sympy.generator import FormulaGenerator
 from sympy.util import RandomChoice, RandomDecidedTruthValue
 custom_randomized_settings = {
-    "root_notation": RandomDecidedTruthValue(0.7),
-    "frac": RandomChoice([r"\frac", r"\mycustomfrac"], weights=[2, 10]),
+    "root_notation": RandomDecidedTruthValue(0.7), # use the same root notation consistent across a single formula (i.e., \sqrt in 70% of the cases and x^{1/2} otherwise)
+    "frac": RandomChoice([r"\frac", r"\mycustomfrac"], weights=[2, 10]), # use \frac in 20% of the cases and \mycustomfrac otherwise (the notation might be different for different fractions within a formula as RandomChoice is used instead of RandomDecidedChoice)
 }
 formula = r"\frac{1}{\sqrt{2}} = \frac{\sqrt{2}}{2}"
 generator = FormulaGenerator(formula, randomize_settings=custom_randomized_settings)
-for version, _ in generator.generate_versions_iterator(max=1, only_true_version=True, initial_is_candidate=False):
+for version, _ in generator.generate_versions_iterator(max=3, only_true_version=True, initial_is_candidate=False):
     print(version)
 
->>> \mycustomfrac{1}{2^{\mycustomfrac{1}{2}}} = \frac{\sqrt{2}}{2}
+>>> \frac{1}{\sqrt{2}} = \mycustomfrac{\sqrt{2}}{2}
+>>> \mycustomfrac{1}{\sqrt{2}} = \mycustomfrac{\sqrt{2}}{2}
+>>> \frac{1}{2^{\mycustomfrac{1}{2}}} = \mycustomfrac{2^{\mycustomfrac{1}{2}}}{2}
 ```
 
 The examples are provided in [examples/generator.py](examples/generator.py). Due to randomized printing, your results
-may (most likely) be different when running the code. You may need to run `pip install antlr4-python3-runtime==4.12` to enable LaTeX parsing. Additionally, you need to install `frozendict`.
+may (most likely) be different when running the code.
+You may need to run `pip install antlr4-python3-runtime==4.12` to enable LaTeX parsing.
 
 
 ## Download

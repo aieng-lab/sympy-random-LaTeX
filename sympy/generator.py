@@ -31,6 +31,8 @@ from enum import Enum
 from sympy.parsing.latex.logic import StringFormula
 from sympy.parsing.latex.text import LaTeXText
 from sympy.printing.stats import PermutationStats
+from sympy.utilities.timeutils import timeout
+
 
 #https://stackoverflow.com/questions/1151658/python-hashable-dicts
 class hashabledict(dict):
@@ -84,6 +86,15 @@ class Strategy(Enum):
     DISTRIBUTE = 'distribute'
     TEXT = 'text'
 
+ALL_VARIABLES = frozenset({
+    'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u',
+    'v', 'w', 'x', 'y', 'z',
+    'A', 'B', 'C', 'D', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
+    r'\alpha', r'\beta', r'\gamma', r'\delta', r'\epsilon', r'\varepsilon', r'\zeta', r'\eta', r'\theta',
+    r'\vartheta', r'\lambda', r'\mu', r'\nu', r'\xi', r'\rho', r'\sigma', r'\tau', r'\phi', r'\varphi',
+    r'\chi', r'\psi', r'\omega',
+})
+
 class FormulaGenerator:
 
     # defines cluster of variables that are typically used within a similar context
@@ -132,9 +143,13 @@ class FormulaGenerator:
     dict (requires key "formula" with string formula, more properties can be set explicitly, including "variables" for
     substitutable variables (e.g. "x"), and "functions" for substitutable functions (e.g. "f").
     """
-    def __init__(self, data, factor_false=1, min_substitution=0, max_substitution=None, force_substitution=False, max_strategies=None, randomize_settings=None):
+
+    def __init__(self, data, additional_names=None, id=None, factor_false=1, min_substitution=0, force_substitution=False, max_strategies=None):
         if data is None:
             return
+
+        if additional_names is None:
+            additional_names = []
 
         self.data = data
         self.id = id
@@ -144,6 +159,7 @@ class FormulaGenerator:
         self.text_substitutions = {}
         self.ids = []
 
+        self.names = additional_names if len(additional_names) > 0 else [None]
         if isinstance(data, str):
             self.formula = data
             with evaluate(False):
@@ -174,7 +190,7 @@ class FormulaGenerator:
 
             self.texs = {self.current_tex}
             self.ids.append(uuid.uuid4())
-        elif isinstance(data, LaTeXText):
+        elif self._is_text_expr(data): # e.g., LaTeXText
             self.current_tex = data
             self.texs = {self.current_tex}
             self.ids.append(uuid.uuid4())
@@ -222,6 +238,7 @@ class FormulaGenerator:
                     else:
                         self.special_variables_candidates[v] = set()
 
+            self.names = data.get('names', []) + additional_names
             with evaluate(False):
                 try:
                     self.current_tex = parse_latex(self.formula)
@@ -251,16 +268,16 @@ class FormulaGenerator:
         self.current_stats = self._create_permutation_stats()
         self.similar_formulas = {}
         self.strategies = [
-                            Strategy.EQUALITY,
-                            Strategy.INEQUALITY,
-                            Strategy.RANDOM_FORMULA,
-                            Strategy.SWAP,
-                            Strategy.VARIABLES,
-                            Strategy.CONSTANTS,
-                            Strategy.DISTRIBUTE
-                            ]
+            Strategy.EQUALITY,
+            Strategy.INEQUALITY,
+            Strategy.RANDOM_FORMULA,
+            Strategy.SWAP,
+            Strategy.VARIABLES,
+            Strategy.CONSTANTS,
+            Strategy.DISTRIBUTE
+        ]
 
-        self.determine_all_known_variables()
+        self.all_known_variables = ALL_VARIABLES
         self.create_style_cluster_mapping()
         self.random_formula = None
         self.no_versions = []
@@ -270,11 +287,13 @@ class FormulaGenerator:
         self.not_allowed_names = []
         self.factor_false = factor_false
         self.min_substitution = min_substitution
-        self.max_substitution = max_substitution
         self.force_substitution = force_substitution
         self.random_small_formula = None
         self.random_large_formula = None
-        self.randomize_settings = randomize_settings
+
+    def __reduce__(self):
+        state = {key: value for key, value in vars(self).items() if key != 'random_formula'}
+        return (create_formula_template_entry, (self.__class__, state))
 
     def __get_all_subsets(self, dictionary):
         if len(dictionary) == 0:
@@ -307,7 +326,7 @@ class FormulaGenerator:
             self.current_tex = c
             return self.current_tex
 
-    def amounts(self, positive_version: bool=None):
+    def amounts(self, positive_version: bool = None):
         if positive_version is None:
             return len(self.versions)
         return len([v for v in self.versions if v[1] == positive_version])
@@ -328,29 +347,11 @@ class FormulaGenerator:
                 mapping[k] = hashabledict(c)
         self.style_cluster_mapping = mapping
 
-    def determine_all_known_variables(self, include_upper=False):
-        variables = frozenset({
-            'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p', 'q', 'r', 's', 't', 'u',
-            'v', 'w', 'x', 'y', 'z',
-            'A', 'B', 'C', 'D', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z',
-            r'\alpha', r'\beta', r'\gamma', r'\delta', r'\epsilon', r'\varepsilon', r'\zeta', r'\eta', r'\theta',
-            r'\vartheta', r'\lambda', r'\mu', r'\nu', r'\xi', r'\rho', r'\sigma', r'\tau', r'\phi', r'\varphi',
-            r'\chi', r'\psi', r'\omega',
-        })
-
-        if include_upper:
-            variables = variables.union({
-                # skip E because of Expected value
-                'A', 'B', 'C', 'D', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U',
-                'V', 'W', 'X', 'Y', 'Z',
-                'V', 'W', 'X', 'Y', 'Z',
-                r'\Omega', r'\Psi', r'\Chi', r'\Phi', r'\Upsilon', r'\Rho', r'\Lambda', r'\Theta'
-            })
-
-        self.all_known_variables = list(variables)
+    def _is_text_expr(self, expr):
+        return hasattr(expr, 'get_formulas')
 
     def get_small_formulas(self):
-        if isinstance(self.current_tex, LaTeXText):
+        if self._is_text_expr(self.current_tex):
             formulas = set(self.current_tex.args)
         elif isinstance(self.current_tex, Basic):
             formulas = {self.current_tex}
@@ -369,7 +370,7 @@ class FormulaGenerator:
         return result
 
     def get_large_formulas(self):
-        if isinstance(self.current_tex, LaTeXText):
+        if self._is_text_expr(self.current_tex):
             formulas = set(self.current_tex.args)
         elif isinstance(self.current_tex, Basic):
             formulas = {self.current_tex}
@@ -389,13 +390,15 @@ class FormulaGenerator:
         return result
 
     def generate_versions(self, max=100, reset=False, only_true_version=False, strategies=None):
-        for _ in self.generate_versions_iterator(max=max, reset=reset, only_true_version=only_true_version, strategies=strategies):
+        for _ in self.generate_versions_iterator(max=max, reset=reset, only_true_version=only_true_version,
+                                                 strategies=strategies):
             pass
 
     def initial_version(self):
         return (self.formula, True), self._create_permutation_stats()
 
-    def generate_versions_iterator(self, max=100, max_none=None, reset=False, only_true_version=False, return_stats=False, strategies=None, initial_is_candidate=True):
+    def generate_versions_iterator(self, max=100, max_none=None, reset=False, only_true_version=False,
+                                   return_stats=False, strategies=None, initial_is_candidate=True, max_time=10):
         if reset:
             iv = self.initial_version()
             self.versions = {iv[0]: iv[1]}
@@ -415,7 +418,21 @@ class FormulaGenerator:
 
         for i in range(max):
             try:
-                version, stats = self.generate_random_version(only_true_version=only_true_version, strategies=strategies)
+                use_timeout = False
+                if use_timeout:
+                    res = timeout(max_time)(lambda: self.generate_random_version(only_true_version=only_true_version,
+                                                                           strategies=strategies))()
+                    if isinstance(res, Exception):
+                        raise res
+                    elif len(res) == 2:
+                        version, stats = res
+                    else:
+                        print("Warning: An error occurred during generating a random version for formula <%s>: %s" % (
+                        self.formula, res))
+                        raise ValueError
+                else:
+                    version, stats = self.generate_random_version(only_true_version=only_true_version,
+                                                                  strategies=strategies)
 
                 if version not in self.versions and version[0] is not None:
                     self.versions[version] = stats
@@ -446,7 +463,8 @@ class FormulaGenerator:
                 amount_false = 1
 
             # prefer to generate a version that is underrepresented (yet)
-            if only_true_version or (amount_true == 1 and amount_false == 1) or amount_false >= self.factor_false * amount_true: #  or (amount_false >= amount_true and self._random(0.1)
+            if only_true_version or (
+                amount_true == 1 and amount_false == 1) or amount_false >= self.factor_false * amount_true:  # or (amount_false >= amount_true and self._random(0.1)
                 tex, stats = self._generate_random_true_version()
                 b = True
             else:
@@ -487,16 +505,11 @@ class FormulaGenerator:
             return False
 
         n = len(self.variables)
-        if self.max_substitution is not None and n > self.max_substitution:
-            n = self.max_substitution
-
         k = random.randint(max(0, min(self.min_substitution, n)), n)
         permuting_variables = random.sample(self.variables, k)
         fixed_variables = [v for v in self.variables if v not in permuting_variables]
 
         n = len(self.functions)
-        if self.max_substitution is not None and n > self.max_substitution - k:
-            n = self.max_substitution - k
         k = random.randint(max(0, min(self.min_substitution, n)), n)
         permuting_functions = random.sample(self.functions, k)
         fixed_functions = [v for v in self.functions if v not in permuting_functions]
@@ -542,12 +555,14 @@ class FormulaGenerator:
                 version = substitute(expr, permutation)
             except DerivativeError as e:
                 if not is_false:
-                    print("A DerivativeError occurred during the substitution <%s> when generating a true version!!!" % e)
+                    print(
+                        "A DerivativeError occurred during the substitution <%s> when generating a true version!!!" % e)
                     raise e
                 version = expr
             except Exception as e:
                 if 'Limits approaching a variable ' not in str(e):
-                    print("An error occurred during the substitution <%s> when generating a %s version" % (e, not is_false))
+                    print("An error occurred during the substitution <%s> when generating a %s version" % (
+                    e, not is_false))
                     try:
                         print(substitution_fnc)
                         print(substitution_var)
@@ -563,22 +578,22 @@ class FormulaGenerator:
             version = expr
 
         try:
-            if self.randomize_settings is not None:
-                tex, tex_stats = random_latex(version, return_stats=True, use_default_randomized_settings=False, **self.randomize_settings)
-            else:
-                tex, tex_stats = random_latex(version, return_stats=True, use_default_randomized_settings=True)
+            tex, tex_stats = random_latex(version, return_stats=True)
             return tex, self.current_stats.union(tex_stats)
         except Exception as e:
             print("Error when creating random latex for %s" % version)
             print(e)
             return None, None
 
-    def _generate_permutation(self, permuting_variables, fixed_variables, permuting_functions, fixed_functions, exclude):
+    def _generate_permutation(self, permuting_variables, fixed_variables, permuting_functions, fixed_functions,
+                              exclude):
         fixed_symbols = fixed_variables + fixed_functions
 
-        permuting_variables_candidates = {v: self._get_variable_permutation_candidates(v, False, exclude=exclude) for v in
+        permuting_variables_candidates = {v: self._get_variable_permutation_candidates(v, False, exclude=exclude) for v
+                                          in
                                           permuting_variables}
-        permuting_functions_candidates = {f: self._get_variable_permutation_candidates(f, True, exclude=exclude) for f in
+        permuting_functions_candidates = {f: self._get_variable_permutation_candidates(f, True, exclude=exclude) for f
+                                          in
                                           permuting_functions}
 
         permuting_candidates = {**permuting_variables_candidates, **permuting_functions_candidates}
@@ -590,7 +605,6 @@ class FormulaGenerator:
         # check if there exist variables dependencies, like f + F -> should only be changed consistently e.g. to h + H
         dependencies = {}
         clusters = []
-
 
         for v in all_symbols:
             cluster = self.style_cluster_mapping.get(v)
@@ -664,7 +678,8 @@ class FormulaGenerator:
             special_permutation_variable_candidates = {}
             special_permutation_function_candidates = {}
             pair_iterator = lambda list: [(l1, l2) for l1 in list for l2 in list if l1 != l2]
-            for x1, x2 in pair_iterator([v for v in permuting_variables if v not in permutation and v not in self.indexed]):
+            for x1, x2 in pair_iterator(
+                [v for v in permuting_variables if v not in permutation and v not in self.indexed]):
                 for cluster in self.variable_cluster:
                     if str(x1) in cluster and str(x2) in cluster:
                         if cluster in special_permutation_variable_candidates:
@@ -681,35 +696,39 @@ class FormulaGenerator:
                             special_permutation_function_candidates[cluster] = {x1, x2}
 
             for cluster, symbols in special_permutation_variable_candidates.items():
-                cluster = [c for c in cluster if c not in [str(s) for s in fixed_symbols + fixed_functions + list(permutation.keys())] and all(c in permuting_candidates[s] for s in symbols)]
+                cluster = [c for c in cluster if c not in [str(s) for s in fixed_symbols + fixed_functions + list(
+                    permutation.keys())] and all(c in permuting_candidates[s] for s in symbols)]
                 if self._random(probability_true=0.2) and len(cluster) > 0:
 
                     # perform this permutations
                     c = [x for x in cluster if x not in fixed_symbols]
                     if len(c) > 0:
-                        target_symbol = random.choice(c) # even an already used variable is ok
+                        target_symbol = random.choice(c)  # even an already used variable is ok
                         symbols = list(symbols)
                         random.shuffle(symbols)
                         for i, s in enumerate(symbols):
-                            permutation[s] = sympy.Indexed(target_symbol, i+1)
+                            permutation[s] = sympy.Indexed(target_symbol, i + 1)
 
             for cluster, symbols in special_permutation_function_candidates.items():
-                cluster = [c for c in cluster if c not in [str(s) for s in fixed_symbols + fixed_functions + list(permutation.keys())] and all(c in permuting_candidates[s] for s in symbols)]
+                cluster = [c for c in cluster if c not in [str(s) for s in fixed_symbols + fixed_functions + list(
+                    permutation.keys())] and all(c in permuting_candidates[s] for s in symbols)]
                 if self._random(probability_true=0.3) and len(cluster) > 0:
                     # perform this permutations
-                    target_symbol = random.choice(list(cluster)) # even an already used variable is ok
+                    target_symbol = random.choice(list(cluster))  # even an already used variable is ok
                     symbols = list(symbols)
                     random.shuffle(symbols)
                     for i, s in enumerate(symbols):
                         if s in self.indexed:
                             s = self.indexed[s]
-                        permutation[s] = sympy.Function('%s_%s' % (target_symbol, i+1))
+                        permutation[s] = sympy.Function('%s_%s' % (target_symbol, i + 1))
 
         # 3. create permutation for other variables
         for s in permuting_symbols:
             if s not in permutation and s in permuting_candidates:
                 candidates = permuting_candidates[s]
-                candidates = [c for c in candidates if c not in [str(v) for v in list(permutation.values()) + fixed_symbols + list(permuting_symbols)]]
+                candidates = [c for c in candidates if c not in [str(v) for v in
+                                                                 list(permutation.values()) + fixed_symbols + list(
+                                                                     permuting_symbols)]]
                 if len(candidates) > 0:
                     c = random.choice(candidates)
                     if s in permuting_variables:
@@ -733,7 +752,7 @@ class FormulaGenerator:
         candidates = set()
         cluster = self.function_cluster if is_function else self.variable_cluster
         if is_function:
-           symbol = self._strip_function(symbol)
+            symbol = self._strip_function(symbol)
 
         for symbols in cluster:
             if symbol in symbols:
@@ -766,7 +785,9 @@ class FormulaGenerator:
         if any(i in self.current_tex for i in [sympy.I, sympy.core.numbers.ICandidate()]) and 'i' in candidates:
             candidates.remove('i')
 
-        if 'E' in candidates and any(c in self.current_tex for c in [sympy.stats.Expectation, sympy.stats.Variance, sympy.stats.Covariance, sympy.stats.ConditionalProbability, sympy.stats.BasicProbability]):
+        if 'E' in candidates and any(c in self.current_tex for c in
+                                     [sympy.stats.Expectation, sympy.stats.Variance, sympy.stats.Covariance,
+                                      sympy.stats.ConditionalProbability, sympy.stats.BasicProbability]):
             candidates.remove('E')
 
         for e in exclude:
@@ -777,6 +798,7 @@ class FormulaGenerator:
 
     def _contains_pow(self):
         return self.__contains_pow(self.current_tex)
+
     def __contains_pow(self, expr):
         if isinstance(expr, sympy.Pow):
             return True
@@ -802,6 +824,15 @@ class FormulaGenerator:
             sympy.Pow
         ], weights=[10, 5, 10, 5, 2])[0]
 
+    def random_name(self, not_allowed_names=None):
+        names = self.names
+        if not_allowed_names:
+            names = random.choice([n for n in self.names if n not in not_allowed_names])
+
+        if len(names) > 0:
+            return random.choice(names)
+        return None
+
     def get_random_version(self, return_stats=False, only_true_version=False):
         if only_true_version:
             keys = [k for k in self.versions.keys() if k[1]]
@@ -811,16 +842,19 @@ class FormulaGenerator:
         if len(keys) > 0:
             random_version = random.choice(keys)
             stats = self.versions[random_version]
-            if return_stats:
-                return random_version, stats
-            return random_version
+            name = self.random_name(self.not_allowed_names)
+            if name:
+                if return_stats:
+                    return name, random_version, stats
+                return name, random_version
         else:
             self.generate_versions(max=1, only_true_version=only_true_version)
             if len(self.versions) > 0:
+                name = self.random_name()
                 version, stats = random.choice(list(self.versions.items()))
                 if return_stats:
-                    return version, stats
-                return version
+                    return name, version, stats
+                return name, version
         if return_stats:
             return None, None, None
         return None, None
@@ -857,7 +891,6 @@ class FormulaGenerator:
         if Strategy.RANDOM_FORMULA in strategies:
             success |= self._strategy_random_formula()
             result = self.current_tex
-        # elif !
         elif Strategy.TEXT in strategies:
             for i, formula in enumerate(result.get_formulas()):
                 new_formula = self._replace_formula(formula)
@@ -892,10 +925,8 @@ class FormulaGenerator:
                     if tex is not None:
                         return tex, stats.union(tex_stats)
 
-                if self.randomize_settings is not None:
-                    tex, tex_stats = random_latex(result, return_stats=True, use_default_randomized_settings=False ,**self.randomize_settings)
-                else:
-                    tex, tex_stats = random_latex(result, return_stats=True, use_default_randomized_settings=True)
+                    # todo merge stats
+                tex, tex_stats = random_latex(result, return_stats=True)
                 return tex, stats.union(tex_stats)
             except Exception as e:
                 print("Error in random false version: %s" % e)
@@ -916,7 +947,7 @@ class FormulaGenerator:
             except Exception:
                 return self.random_small_formula()
 
-    def _random(self, probability_true: float=None) -> bool:
+    def _random(self, probability_true: float = None) -> bool:
         if probability_true:
             return random.random() < probability_true
         return bool(random.getrandbits(1))
@@ -940,10 +971,14 @@ class FormulaGenerator:
                         creator = self._get_random_binary_operator()
                         side = int(self._random())
                         side_expr = expr.args[side]
-                        if not (self._is_inequality(side_expr) or isinstance(side_expr, sympy.core.relational.Relational)):
+                        if not (
+                            self._is_inequality(side_expr) or isinstance(side_expr, sympy.core.relational.Relational)):
                             new_expr = creator(side_expr, new_element, evaluate=False)
                             expr.set_arg(side, new_expr)
-                            self.current_stats['strategy_equality'] = {'old': self._print_expr(side_expr), 'new': self._print_expr(new_expr), 'subexpression': subexpression, 'indices': indices}
+                            self.current_stats['strategy_equality'] = {'old': self._print_expr(side_expr),
+                                                                       'new': self._print_expr(new_expr),
+                                                                       'subexpression': subexpression,
+                                                                       'indices': indices}
                             return True
                         return False
                     else:
@@ -952,7 +987,9 @@ class FormulaGenerator:
                         operator = self._get_random_binary_operator()
                         with evaluate(False):
                             arg = sympy_copy(expr.get_arg(indices))
-                        new_element_ = operator(new_element, arg, evaluate=False) if self._random() else operator(arg, new_element, evaluate=False)
+                        new_element_ = operator(new_element, arg, evaluate=False) if self._random() else operator(arg,
+                                                                                                                  new_element,
+                                                                                                                  evaluate=False)
                         expr.set_arg(indices, new_element_)
                         try:
                             new_ = self._print_expr(new_element_)
@@ -964,7 +1001,8 @@ class FormulaGenerator:
                         except Exception as e:
                             print("Something invalid happened during strategy_equality (%s)" % e)
                             raise e
-                        self.current_stats['strategy_equality'] = {'old': self._print_expr(arg), 'new': new_, 'subexpression': subexpression, 'indices': indices}
+                        self.current_stats['strategy_equality'] = {'old': self._print_expr(arg), 'new': new_,
+                                                                   'subexpression': subexpression, 'indices': indices}
                         return True
                 else:
                     return False
@@ -983,13 +1021,15 @@ class FormulaGenerator:
                             return False
                         new_element = old_element.args[indices[-1]]
                         current.set_arg(indices[-2], new_element)
-                        self.current_stats['strategy_equality'] = {'old': old, 'new': self._print_expr(current), 'subexpression': True, 'indices': indices}
+                        self.current_stats['strategy_equality'] = {'old': old, 'new': self._print_expr(current),
+                                                                   'subexpression': True, 'indices': indices}
                     else:
                         # replace the symbol
                         symbol = self._get_random_variable(True)
                         old = self._print_expr(current)
                         current.set_arg(0, symbol)
-                        self.current_stats['strategy_equality'] = {'old': old, 'new': self._print_expr(current), 'subexpression': False, 'indices': indices}
+                        self.current_stats['strategy_equality'] = {'old': old, 'new': self._print_expr(current),
+                                                                   'subexpression': False, 'indices': indices}
                 else:
                     return False
 
@@ -1011,7 +1051,8 @@ class FormulaGenerator:
         return latex(expr)
 
     def _is_inequality(self, expr):
-        return isinstance(expr, (sympy.LessThan, sympy.GreaterThan, sympy.StrictGreaterThan, sympy.StrictLessThan, sympy.Ne))
+        return isinstance(expr,
+                          (sympy.LessThan, sympy.GreaterThan, sympy.StrictGreaterThan, sympy.StrictLessThan, sympy.Ne))
 
     def _strategy_inequality(self, expr, depth=0, max_depth=4, indices=None):
         if indices is None:
@@ -1041,19 +1082,20 @@ class FormulaGenerator:
             self.current_stats['strategy_inequality'] = {'old': old, 'new': new_expression, 'indices': indices}
             return True
         elif depth < max_depth and hasattr(expr, 'args'):
-                arg_indices = list(range(len(expr.args)))
-                random.shuffle(arg_indices)
-                for i in arg_indices:
-                    success = self._strategy_inequality(expr.args[i], depth=depth+1, max_depth=max_depth, indices=indices+[i])
-                    if success:
-                        return True
+            arg_indices = list(range(len(expr.args)))
+            random.shuffle(arg_indices)
+            for i in arg_indices:
+                success = self._strategy_inequality(expr.args[i], depth=depth + 1, max_depth=max_depth,
+                                                    indices=indices + [i])
+                if success:
+                    return True
         return False
 
     def _strategy_swap(self, expr):
         # swap or modify the arguments of non-commutative binary operators: pow, div, minus
         # also unary functions can be replaced by other unary functions
 
-        indices = self._get_swap_indices(expr) # todo larger subexpressions might be alright as well
+        indices = self._get_swap_indices(expr)  # todo larger subexpressions might be alright as well
         if len(indices) > 0:
             indices = random.choice(indices)
             # swap
@@ -1122,7 +1164,7 @@ class FormulaGenerator:
 
     def __disjoint_subsets(self, lst):
         n = len(lst)
-        k = random.randint(1, n-1) # at least one element is needed for subset2
+        k = random.randint(1, n - 1)  # at least one element is needed for subset2
         subset1 = random.sample(lst, k)
         subset2 = [elem for elem in lst if elem not in subset1]
         n = len(subset2)
@@ -1177,9 +1219,13 @@ class FormulaGenerator:
                                     for s in side:
                                         expr.set_arg(s, expr.args[s].subs(element, new_symbol))
                                 new_ = self._print_expr(expr)
-                                self.current_stats['strategy_variables'] = {'old': old, 'new': new_, 'substitution': {self._print_expr(element), self._print_expr(new_symbol)}, 'indices': side}
+                                self.current_stats['strategy_variables'] = {'old': old, 'new': new_,
+                                                                            'substitution': {self._print_expr(element),
+                                                                                             self._print_expr(
+                                                                                                 new_symbol)},
+                                                                            'indices': side}
                                 return True
-                            except Exception as e: # if x->x
+                            except Exception as e:  # if x->x
                                 pass
                 except Exception as e:
                     pass
@@ -1259,7 +1305,8 @@ class FormulaGenerator:
 
         indices = []
 
-        non_distributive = [sympy.sin, sympy.cos, sympy.tan, sympy.acos, sympy.asin, sympy.atan, sympy.log, sympy.factorial, sympy.Pow]
+        non_distributive = [sympy.sin, sympy.cos, sympy.tan, sympy.acos, sympy.asin, sympy.atan, sympy.log,
+                            sympy.factorial, sympy.Pow]
 
         is_pow = isinstance(expr, sympy.Pow)
         if is_pow:
@@ -1282,7 +1329,6 @@ class FormulaGenerator:
                     return lambda x: sympy.Pow(expr.args[0], x)
             else:
                 return type(expr)
-
 
         if is_non_distributive:
             arg = expr.args[arg_index]
@@ -1319,7 +1365,7 @@ class FormulaGenerator:
 
                     if candidate and isinstance(lhs, sympy.log):
                         if len(lhs.args) < 2 ^ len(rhs.args) < 2:
-                            candidate = False # a log has a base given, the other one not
+                            candidate = False  # a log has a base given, the other one not
                         elif len(lhs.args) == 2 and len(rhs.args) == 2:
                             # check that bases are equal
                             candidate = lhs.args[1] == rhs.args[1]
@@ -1334,7 +1380,6 @@ class FormulaGenerator:
                         l = lhs.args[arg_index]
                         r = rhs.args[arg_index]
                         candidate &= self.__check_candidate(lhs, l, r, is_add, arg_index)
-
 
                         if candidate:
                             # candidate like sin(x)+sin(y) -> sin(x+y)
@@ -1365,13 +1410,14 @@ class FormulaGenerator:
         standard_candidates = [S.One, S.Zero, -S.One, sympy.Number(2)]
         if self._random(probability_true=0.7):
             return random.choice(standard_candidates)
-        candidates = [42, 73, 128, S.Half, random.randint(-100, 500), sympy.pi, -sympy.pi, sympy.oo, sympy.I, -1, 1/3, random.randint(0, 20), random.randint(-20, 20), int(100 * random.random() * random.randint(-2, 3)) / 100.0]
+        candidates = [42, 73, 128, S.Half, random.randint(-100, 500), sympy.pi, -sympy.pi, sympy.oo, sympy.I, -1, 1 / 3,
+                      random.randint(0, 20), random.randint(-20, 20),
+                      int(100 * random.random() * random.randint(-2, 3)) / 100.0]
 
         candidate = random.choice(candidates)
         if isinstance(candidate, (int, float)):
             return sympy.Number(candidate)
         return candidate
-
 
     def _strategy_constants(self, expr):
         # replace constants (like 0, 1, oo, pi, ...) by other constants
@@ -1406,7 +1452,7 @@ class FormulaGenerator:
             elif old == n:
                 new_ = random.choice([inf, n - 1, n + 1, random_number])
             elif old == i:
-                new_ = random.choice([one, -one, i*i])
+                new_ = random.choice([one, -one, i * i])
             elif old == e:
                 new_ = random.choice([three, pi, i, random_number])
             else:
@@ -1424,7 +1470,7 @@ class FormulaGenerator:
 
         return False
 
-    def _get_constant_indices(self, expr, prefix = None, is_super=False):
+    def _get_constant_indices(self, expr, prefix=None, is_super=False):
         if prefix is None:
             prefix = []
 
@@ -1437,7 +1483,7 @@ class FormulaGenerator:
                 indices.append(prefix)
             elif hasattr(expr, 'args'):
                 if isinstance(expr, sympy.Tuple):
-                    is_super = lambda i: i==2
+                    is_super = lambda i: i == 2
                 else:
                     is_super = lambda i: False
 
@@ -1449,12 +1495,11 @@ class FormulaGenerator:
             print(e)
         return indices
 
-
     def _strategy_random_formula(self, max_tries=10):
         if (self._random(probability_true=0.5) or not self.random_formula) and len(self.no_versions) > 0:
             # use no_versions -> MANUAL
             for i in range(max_tries):
-                no_version : FormulaGenerator = random.choice(self.no_versions)
+                no_version: FormulaTemplateEntry = random.choice(self.no_versions)
                 name, formula, stats = no_version.get_random_version(only_true_version=True, return_stats=True)
                 if not formula or not name:
                     continue
@@ -1472,7 +1517,8 @@ class FormulaGenerator:
                     try:
                         tex = parse_latex(formula[0])
                         self.current_tex = tex
-                        self.current_stats['strategy_random_formula'] = {'old': old, 'new': formula[0], 'no_version': True, "stats": dict(stats)}
+                        self.current_stats['strategy_random_formula'] = {'old': old, 'new': formula[0],
+                                                                         'no_version': True, "stats": dict(stats)}
                         return True
                     except Exception as e:
                         pass
@@ -1482,14 +1528,16 @@ class FormulaGenerator:
                 r = self.random_formula(return_stats=True, only_true_version=True)
                 if r and isinstance(r, tuple):
                     random_formula, stats = r
-                    if random_formula and random_formula[2] and 'formula_name_id' in stats and stats['formula_name_id'] != self.id:
+                    if random_formula and random_formula[2] and 'formula_name_id' in stats and stats[
+                        'formula_name_id'] != self.id:
                         random_formula = parse_latex(random_formula[1])
                         if random_formula != self.current_tex:
                             stats = stats.copy()
                             if 'stats' in stats:
                                 del stats['stats']
                             old = self._print_expr(self.current_tex)
-                            self.current_stats['strategy_random_formula'] = {'old': old, 'new': random_formula, 'no_version': False}
+                            self.current_stats['strategy_random_formula'] = {'old': old, 'new': random_formula,
+                                                                             'no_version': False}
                             self.current_tex = random_formula
                             return True
                 elif isinstance(r, str):
@@ -1527,7 +1575,7 @@ class FormulaGenerator:
                 if isinstance(arg, (sympy.core.function.MultiDerivative,)):
                     if i > 1:
                         continue
-                elif isinstance(arg, (sympy.Indexed, sympy.IndexedBase, sympy.Tuple, )):
+                elif isinstance(arg, (sympy.Indexed, sympy.IndexedBase, sympy.Tuple,)):
                     continue
                 current_index = prefix.copy()
                 current_index.append(i)
@@ -1558,10 +1606,12 @@ class FormulaGenerator:
             return True
 
         if isinstance(expr, sympy.Add):
-            return isinstance(expr.args[1], sympy.Mul) and expr.args[1].args[0] == -S.One # it is actually a subtraction
+            return isinstance(expr.args[1], sympy.Mul) and expr.args[1].args[
+                0] == -S.One  # it is actually a subtraction
 
         if isinstance(expr, sympy.Mul):
-            return not isinstance(expr.args[1], sympy.Pow) or isinstance(expr.args[1], sympy.Pow) and expr.args[1].args[0] == S.One
+            return not isinstance(expr.args[1], sympy.Pow) or isinstance(expr.args[1], sympy.Pow) and expr.args[1].args[
+                0] == S.One
 
         if self._is_unary(expr, exclude=[sympy.factorial]):
             return True
@@ -1607,7 +1657,8 @@ class FormulaGenerator:
 
         # make a binary expression, like x+y or x^y
         return self._get_random_binary_operator()(self._get_random_variable(return_symbol=True, include_numbers=True),
-                                                  self._get_random_variable(return_symbol=True, prefer_used_var=False, include_numbers=True),
+                                                  self._get_random_variable(return_symbol=True, prefer_used_var=False,
+                                                                            include_numbers=True),
                                                   evaluate=False)
 
     def _random_subexpression(self, expr):
@@ -1623,7 +1674,11 @@ class FormulaGenerator:
         return sympy_copy(sub_expression)
 
     def _is_small_expression(self, expr, depth=0):
-        if isinstance(expr, (sympy.Equality, sympy.LessThan, sympy.GreaterThan, sympy.StrictLessThan, sympy.StrictGreaterThan, sympy.Formulas, sympy.core.BasicMatrix, sympy.Indexed, sympy.IndexedBase, sympy.Tuple, sympy.core.symbol.Str, sympy.Union, sympy.Intersection, sympy.sets.sets.SetComplement, sympy.sets.sets.SetMinus, sympy.core.BasicVector)):
+        if isinstance(expr, (
+        sympy.Equality, sympy.LessThan, sympy.GreaterThan, sympy.StrictLessThan, sympy.StrictGreaterThan,
+        sympy.Formulas, sympy.core.BasicMatrix, sympy.Indexed, sympy.IndexedBase, sympy.Tuple, sympy.core.symbol.Str,
+        sympy.Union, sympy.Intersection, sympy.sets.sets.SetComplement, sympy.sets.sets.SetMinus,
+        sympy.core.BasicVector)):
             return False
 
         try:

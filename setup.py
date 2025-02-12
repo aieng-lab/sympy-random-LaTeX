@@ -361,7 +361,8 @@ if __name__ == '__main__':
             'Programming Language :: Python :: Implementation :: PyPy',
             ],
           install_requires=[
-            'mpmath>=%s' % min_mpmath_version,
+              'mpmath>=%s' % min_mpmath_version,
+              'frozendict',
             ],
           extras_require={
               "dev": ["pytest>=7.1.0", "hypothesis>=6.70.0"],

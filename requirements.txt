@@ -1,1 +1,3 @@
 frozendict
+mpmath
+antlr4-python3-runtime==4.12

@@ -795,68 +795,74 @@ class LatexPrinter(Printer):
 
         numer, denom = fraction(expr, exact=True)
 
-        from sympy import simplify
-        from sympy import log
-        snumer = str(numer)
-        if len(snumer) > 5 and snumer.startswith('1') and set(snumer[1:]) == {'0'}:
-            numer = Pow(10, len(snumer) - 1, evaluate=False)
-
-        sdenom = str(denom)
-        if len(sdenom) > 5 and sdenom.startswith('1') and set(sdenom[1:]) == {'0'}:
-            denom = Pow(10, len(sdenom) - 1, evaluate=False)
-
-            if numer == 1:
-                return "10^{-%d}" % (len(sdenom) - 1)
 
         if denom is S.One and Pow(1, -1, evaluate=False) not in expr.args:
             # use the original expression here, since fraction() may have
             # altered it when producing numer and denom
             tex += convert(expr)
-        elif isinstance(denom, BasicMatrix):
-            sdenom = convert(denom)
-            snumer = convert(-numer)
-            return "%s^{%s}" % (sdenom, snumer)
         else:
-            snumer = convert(numer)
-            sdenom = convert(denom)
-            ldenom = len(sdenom.split())
-            ratio = self._settings['long_frac_ratio']
-            if self._settings['fold_short_frac'] and ldenom <= 2 and \
-                    "^" not in sdenom:
-                # handle short fractions
-                if self._needs_mul_brackets(denom, div=True):
-                    sdenom = self._add_parens(sdenom)
+            try:
+                # handle some special cases
+                # using str(expr) might lead to an infinite recursion (for some reason), especially when S.I is involved
 
-                if self._needs_mul_brackets(numer, last=False):
-                    tex += self._add_parens(snumer) + r"/%s" % (sdenom)
-                else:
-                    tex += r"%s/%s" % (snumer, sdenom)
-            elif ratio is not None and \
-                    len(snumer.split()) > ratio*ldenom:
-                # handle long fractions
-                if self._needs_mul_brackets(numer, last=True):
-                    tex += self._create_frac('1', sdenom) + separator + self._add_parens(snumer)
-                elif numer.is_Mul:
-                    # split a long numerator
-                    a = S.One
-                    b = S.One
-                    for x in numer.args:
-                        if self._needs_mul_brackets(x, last=False) or \
-                                len(convert(a*x).split()) > ratio*ldenom or \
-                                (hasattr(b, 'is_commutative') and hasattr(x, 'is_commutative') and b.is_commutative is x.is_commutative is False):
-                            b *= x
-                        else:
-                            a *= x
-                    if self._needs_mul_brackets(b, last=True):
-                        tex += self._create_frac(convert(a), sdenom) + separator + self._add_parens(convert(b))
-                    else:
-                        tex += self._create_frac(convert(a), sdenom) + (r"%s%s" % (separator, convert(b)))
-                elif snumer == '1':
-                    tex += self._create_frac('1', sdenom)
-                else:
-                    tex += self._create_frac('1', sdenom) + ("%s%s" % (separator, snumer))
+                snumer = str(numer)
+                if len(snumer) > 5 and snumer.startswith('1') and set(snumer[1:]) == {'0'}:
+                    numer = Pow(10, len(snumer) - 1, evaluate=False)
+
+                sdenom = str(denom)
+                if len(sdenom) > 5 and sdenom.startswith('1') and set(sdenom[1:]) == {'0'}:
+                    denom = Pow(10, len(sdenom) - 1, evaluate=False)
+
+                    if numer == 1:
+                        return "10^{-%d}" % (len(sdenom) - 1)
+            except Exception:
+                pass
+
+            if isinstance(denom, BasicMatrix):
+                sdenom = convert(denom)
+                snumer = convert(-numer)
+                return "%s^{%s}" % (sdenom, snumer)
             else:
-                tex += self._create_frac(snumer, sdenom)
+                snumer = convert(numer)
+                sdenom = convert(denom)
+                ldenom = len(sdenom.split())
+                ratio = self._settings['long_frac_ratio']
+                if self._settings['fold_short_frac'] and ldenom <= 2 and \
+                        "^" not in sdenom:
+                    # handle short fractions
+                    if self._needs_mul_brackets(denom, div=True):
+                        sdenom = self._add_parens(sdenom)
+
+                    if self._needs_mul_brackets(numer, last=False):
+                        tex += self._add_parens(snumer) + r"/%s" % (sdenom)
+                    else:
+                        tex += r"%s/%s" % (snumer, sdenom)
+                elif ratio is not None and \
+                        len(snumer.split()) > ratio*ldenom:
+                    # handle long fractions
+                    if self._needs_mul_brackets(numer, last=True):
+                        tex += self._create_frac('1', sdenom) + separator + self._add_parens(snumer)
+                    elif numer.is_Mul:
+                        # split a long numerator
+                        a = S.One
+                        b = S.One
+                        for x in numer.args:
+                            if self._needs_mul_brackets(x, last=False) or \
+                                    len(convert(a*x).split()) > ratio*ldenom or \
+                                    (hasattr(b, 'is_commutative') and hasattr(x, 'is_commutative') and b.is_commutative is x.is_commutative is False):
+                                b *= x
+                            else:
+                                a *= x
+                        if self._needs_mul_brackets(b, last=True):
+                            tex += self._create_frac(convert(a), sdenom) + separator + self._add_parens(convert(b))
+                        else:
+                            tex += self._create_frac(convert(a), sdenom) + (r"%s%s" % (separator, convert(b)))
+                    elif snumer == '1':
+                        tex += self._create_frac('1', sdenom)
+                    else:
+                        tex += self._create_frac('1', sdenom) + ("%s%s" % (separator, snumer))
+                else:
+                    tex += self._create_frac(snumer, sdenom)
 
         if include_parens:
             tex += ")"

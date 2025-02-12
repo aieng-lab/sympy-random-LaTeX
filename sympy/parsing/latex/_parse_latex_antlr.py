@@ -141,6 +141,7 @@ def postprocessing(expr, text):
     if CHECK and len(shortened_tex) < len(shortened_text) / 2:
         raise LaTeXParsingError("Parsing seems to bee invalid due to too short string length <%s>, parsed <%s>, printed <%s>" % (text, expr, latex_))
 
+    # apply safeguards to prevent mathematical constants are treated as variables
     try:
         i = sympy.Symbol('i')
         if i in expr:
@@ -159,6 +160,7 @@ def postprocessing(expr, text):
 
         e = sympy.Symbol('e')
         if e in expr:
+            # _e indicates logarithm to the base e, while e^ indicates the exponential function (e.g., e^x), but e^2 is likely to be the variable e squared
             if '_e' in text or ('e^' in text and not 'e^2' in text):
                 with evaluate(False):
                     expr = expr.subs(e, sympy.E)
