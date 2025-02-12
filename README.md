@@ -1,33 +1,5 @@
 # SymPy with randomized LaTeX Formula Generator
 
-[![pypi version](https://img.shields.io/pypi/v/sympy.svg)](https://pypi.python.org/pypi/sympy)
-[![Join the chat at https://gitter.im/sympy/sympy](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/sympy/sympy?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
-[![Zenodo Badge](https://zenodo.org/badge/18918/sympy/sympy.svg)](https://zenodo.org/badge/latestdoi/18918/sympy/sympy)
-[![Downloads](https://pepy.tech/badge/sympy/month)](https://pepy.tech/project/sympy)
-[![GitHub Issues](https://img.shields.io/badge/issue_tracking-github-blue.svg)](https://github.com/sympy/sympy/issues)
-[![Git Tutorial](https://img.shields.io/badge/PR-Welcome-%23FF8300.svg?)](https://git-scm.com/book/en/v2/GitHub-Contributing-to-a-Project)
-[![Powered by NumFocus](https://img.shields.io/badge/powered%20by-NumFOCUS-orange.svg?style=flat&colorA=E1523D&colorB=007D8A)](https://numfocus.org)
-[![Commits since last release](https://img.shields.io/github/commits-since/sympy/sympy/latest.svg?longCache=true&style=flat-square&logo=git&logoColor=fff)](https://github.com/sympy/sympy/releases)
-
-[![SymPy Banner](https://github.com/sympy/sympy/raw/master/banner.svg)](https://sympy.org/)
-
-
-See the [AUTHORS](AUTHORS) file for the list of authors.
-
-And many more people helped on the SymPy mailing list, reported bugs,
-helped organize SymPy's participation in the Google Summer of Code, the
-Google Highly Open Participation Contest, Google Code-In, wrote and
-blogged about SymPy...
-
-License: New BSD License (see the [LICENSE](LICENSE) file for details) covers all
-files in the sympy repository unless stated otherwise.
-
-Our mailing list is at
-<https://groups.google.com/forum/?fromgroups#!forum/sympy>.
-
-We have a community chat at [Gitter](https://gitter.im/sympy/sympy). Feel
-free to ask us anything there. We have a very welcoming and helpful
-community.
 
 
 # Special Features of this fork
@@ -101,6 +73,45 @@ for version, _ in generator.generate_versions_iterator(max=3, only_true_version=
 The examples are provided in [examples/generator.py](examples/generator.py). Due to randomized printing, your results
 may (most likely) be different when running the code.
 You may need to run `pip install antlr4-python3-runtime==4.12` to enable LaTeX parsing.
+
+## CITATION
+If you use the special features of this fork, please cite the following paper:
+```bibtex
+todo
+```
+
+See also the citation section of the general SymPy repository below.
+
+# SymPy
+[![pypi version](https://img.shields.io/pypi/v/sympy.svg)](https://pypi.python.org/pypi/sympy)
+[![Join the chat at https://gitter.im/sympy/sympy](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/sympy/sympy?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+[![Zenodo Badge](https://zenodo.org/badge/18918/sympy/sympy.svg)](https://zenodo.org/badge/latestdoi/18918/sympy/sympy)
+[![Downloads](https://pepy.tech/badge/sympy/month)](https://pepy.tech/project/sympy)
+[![GitHub Issues](https://img.shields.io/badge/issue_tracking-github-blue.svg)](https://github.com/sympy/sympy/issues)
+[![Git Tutorial](https://img.shields.io/badge/PR-Welcome-%23FF8300.svg?)](https://git-scm.com/book/en/v2/GitHub-Contributing-to-a-Project)
+[![Powered by NumFocus](https://img.shields.io/badge/powered%20by-NumFOCUS-orange.svg?style=flat&colorA=E1523D&colorB=007D8A)](https://numfocus.org)
+[![Commits since last release](https://img.shields.io/github/commits-since/sympy/sympy/latest.svg?longCache=true&style=flat-square&logo=git&logoColor=fff)](https://github.com/sympy/sympy/releases)
+
+[![SymPy Banner](https://github.com/sympy/sympy/raw/master/banner.svg)](https://sympy.org/)
+
+
+See the [AUTHORS](AUTHORS) file for the list of authors.
+
+And many more people helped on the SymPy mailing list, reported bugs,
+helped organize SymPy's participation in the Google Summer of Code, the
+Google Highly Open Participation Contest, Google Code-In, wrote and
+blogged about SymPy...
+
+License: New BSD License (see the [LICENSE](LICENSE) file for details) covers all
+files in the sympy repository unless stated otherwise.
+
+Our mailing list is at
+<https://groups.google.com/forum/?fromgroups#!forum/sympy>.
+
+We have a community chat at [Gitter](https://gitter.im/sympy/sympy). Feel
+free to ask us anything there. We have a very welcoming and helpful
+community.
+
 
 
 ## Download
