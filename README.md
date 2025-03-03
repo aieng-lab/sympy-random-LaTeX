@@ -1,5 +1,6 @@
 # SymPy with randomized LaTeX Formula Generator
 
+[![arXiv](https://img.shields.io/badge/arXiv-2502.20855-B31B1B.svg)](https://arxiv.org/abs/2502.20855)
 
 
 # Special Features of this fork
@@ -74,10 +75,22 @@ The examples are provided in [examples/generator.py](examples/generator.py). Due
 may (most likely) be different when running the code.
 You may need to run `pip install antlr4-python3-runtime==4.12` to enable LaTeX parsing.
 
+## Generated Datasets
+
+See [Math Mutator (MAMUT)](https://github.com/aieng-lab/math-mutator) for information regarding generated datasets using this special fork.
+
 ## CITATION
 If you use the special features of this fork, please cite the following paper:
 ```bibtex
-todo
+@misc{drechsel2025mamutnovelframeworkmodifying,
+      title={{MAMUT}: A Novel Framework for Modifying Mathematical Formulas for the Generation of Specialized Datasets for Language Model Training}, 
+      author={Jonathan Drechsel and Anja Reusch and Steffen Herbold},
+      year={2025},
+      eprint={2502.20855},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2502.20855}, 
+}
 ```
 
 See also the citation section of the general SymPy repository below.
