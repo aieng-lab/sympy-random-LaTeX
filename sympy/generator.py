@@ -291,10 +291,6 @@ class FormulaGenerator:
         self.random_small_formula = None
         self.random_large_formula = None
 
-    def __reduce__(self):
-        state = {key: value for key, value in vars(self).items() if key != 'random_formula'}
-        return (create_formula_template_entry, (self.__class__, state))
-
     def __get_all_subsets(self, dictionary):
         if len(dictionary) == 0:
             yield frozendict({})
@@ -1499,7 +1495,7 @@ class FormulaGenerator:
         if (self._random(probability_true=0.5) or not self.random_formula) and len(self.no_versions) > 0:
             # use no_versions -> MANUAL
             for i in range(max_tries):
-                no_version: FormulaTemplateEntry = random.choice(self.no_versions)
+                no_version = random.choice(self.no_versions)
                 name, formula, stats = no_version.get_random_version(only_true_version=True, return_stats=True)
                 if not formula or not name:
                     continue

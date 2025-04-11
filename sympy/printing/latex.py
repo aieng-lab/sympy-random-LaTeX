@@ -804,7 +804,6 @@ class LatexPrinter(Printer):
             try:
                 # handle some special cases
                 # using str(expr) might lead to an infinite recursion (for some reason), especially when S.I is involved
-
                 snumer = str(numer)
                 if len(snumer) > 5 and snumer.startswith('1') and set(snumer[1:]) == {'0'}:
                     numer = Pow(10, len(snumer) - 1, evaluate=False)
@@ -3586,7 +3585,7 @@ class LatexPrinter(Printer):
         # default to just printing as monospace, like would normally be shown
         s = super().emptyPrinter(expr)
 
-        return r"\mathtt{\text{%s}}" % latex_escape(s)
+        return str(s)
 
 
 def translate(s: str) -> str:
