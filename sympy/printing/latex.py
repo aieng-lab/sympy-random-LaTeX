@@ -3585,8 +3585,7 @@ class LatexPrinter(Printer):
         # default to just printing as monospace, like would normally be shown
         s = super().emptyPrinter(expr)
 
-        return str(s)
-
+        return r"\mathtt{\text{%s}}" % latex_escape(s)
 
 def translate(s: str) -> str:
     r'''
