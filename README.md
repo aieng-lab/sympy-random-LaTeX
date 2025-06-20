@@ -1,3 +1,6 @@
+[![Moved to aieng-lab/sympy-random-LaTeX](https://img.shields.io/badge/repo%20moved-aieng--lab%2Fsympy--random--LaTeX-blue)](https://github.com/aieng-lab/sympy-random-LaTeX)
+
+
 > ⚠️ **This repository has moved!**  
 > Future updates will only be made at [https://github.com/aieng-lab/sympy-random-LaTeX](https://github.com/aieng-lab/sympy-random-LaTeX).  
 > Please update your bookmarks and switch to the new repository.
