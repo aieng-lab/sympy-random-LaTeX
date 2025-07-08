@@ -1,11 +1,3 @@
-[![Moved to aieng-lab/sympy-random-LaTeX](https://img.shields.io/badge/repo%20moved-aieng--lab%2Fsympy--random--LaTeX-blue)](https://github.com/aieng-lab/sympy-random-LaTeX)
-
-
-> ⚠️ **This repository has moved!**  
-> Future updates will only be made at [https://github.com/aieng-lab/sympy-random-LaTeX](https://github.com/aieng-lab/sympy-random-LaTeX).  
-> Please update your bookmarks and switch to the new repository.
-
-
 # SymPy with randomized LaTeX Formula Generator
 
 [![arXiv](https://img.shields.io/badge/arXiv-2502.20855-B31B1B.svg)](https://arxiv.org/abs/2502.20855)
